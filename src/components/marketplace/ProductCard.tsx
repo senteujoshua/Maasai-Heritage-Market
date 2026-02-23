@@ -53,7 +53,7 @@ export function ProductCard({ listing, userId, onAddToCart, className }: Product
           <div className="absolute top-2 left-2 flex flex-col gap-1">
             {isAuction && <Badge variant="auction">Live Auction</Badge>}
             {!isAuction && <Badge variant="fixed">Buy Now</Badge>}
-            {listing.bid_count > 5 && <Badge variant="hot">🔥 Hot</Badge>}
+            {listing.bid_count > 5 && <Badge variant="hot">Hot</Badge>}
             {isSold && <Badge variant="sold">Sold</Badge>}
           </div>
           <button onClick={toggleWishlist} className={cn('absolute top-2 right-2 p-2 rounded-full bg-white/90 shadow-sm transition-all duration-200 hover:scale-110', wishlisted ? 'text-maasai-red' : 'text-maasai-brown/60')}>

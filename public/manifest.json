@@ -4,8 +4,8 @@
   "description": "Authentic Kenyan cultural art, attire, and crafts marketplace",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1A0F00",
-  "theme_color": "#B22222",
+  "background_color": "#000000",
+  "theme_color": "#6D001A",
   "orientation": "portrait",
   "icons": [
     {

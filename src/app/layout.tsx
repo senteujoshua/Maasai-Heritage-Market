@@ -25,8 +25,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#B22222' },
-    { media: '(prefers-color-scheme: dark)', color: '#1A0F00' },
+    { media: '(prefers-color-scheme: light)', color: '#6D001A' },
+    { media: '(prefers-color-scheme: dark)', color: '#000000' },
   ],
 };
 
@@ -53,14 +53,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             toastOptions={{
               duration: 4000,
               style: {
-                background: '#2F1F0F',
-                color: '#FDF6E3',
-                border: '1px solid #4A3020',
+                background: '#111111',
+                color: '#FFFFFF',
+                border: '1px solid #222222',
                 borderRadius: '12px',
-                fontFamily: 'Poppins, sans-serif',
+                fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
                 fontSize: '14px',
               },
-              success: { iconTheme: { primary: '#B22222', secondary: '#FDF6E3' } },
+              success: { iconTheme: { primary: '#6D001A', secondary: '#FFFFFF' } },
             }}
           />
         </ThemeProvider>

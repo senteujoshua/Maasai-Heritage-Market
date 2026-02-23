@@ -4,14 +4,14 @@ import { createClient } from '@/lib/supabase/client';
 import { ProductCard } from '@/components/marketplace/ProductCard';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Gavel, Package } from 'lucide-react';
+import { Loader2, Gavel, Package, Clock, CheckCircle2 } from 'lucide-react';
 import type { Listing } from '@/types';
 import { cn } from '@/lib/utils';
 
 const TABS = [
-  { id: 'active', label: '🔔 Live Auctions' },
-  { id: 'ending_soon', label: '⏰ Ending Soon' },
-  { id: 'ended', label: '✅ Ended' },
+  { id: 'active', label: 'Live Auctions', Icon: Gavel },
+  { id: 'ending_soon', label: 'Ending Soon', Icon: Clock },
+  { id: 'ended', label: 'Ended', Icon: CheckCircle2 },
 ];
 
 export default function AuctionsPage() {
@@ -48,24 +48,34 @@ export default function AuctionsPage() {
   useEffect(() => { fetchAuctions(); }, [fetchAuctions]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+      {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 bg-maasai-red/10 rounded-xl flex items-center justify-center">
             <Gavel className="h-5 w-5 text-maasai-red" />
           </div>
-          <h1 className="text-2xl font-bold font-display text-maasai-black dark:text-white">Live Auctions</h1>
-          <span className="flex h-2.5 w-2.5 rounded-full bg-maasai-red animate-bead-pulse" />
+          <h1 className="text-2xl font-bold font-display text-maasai-black dark:text-white tracking-tight">
+            Live Auctions
+          </h1>
+          <span className="flex h-2 w-2 rounded-full bg-maasai-red animate-bead-pulse" />
         </div>
-        <p className="text-maasai-brown/60 dark:text-maasai-beige/60 text-sm ml-13">
+        <p className="text-maasai-brown/60 dark:text-maasai-beige/60 text-sm ml-[3.25rem]">
           Bid on authentic Maasai cultural items. Auctions run 6–12 hours.
         </p>
       </div>
 
-      <div className="flex gap-2 mb-6 border-b border-maasai-beige/40 dark:border-maasai-brown-light">
-        {TABS.map(({ id, label }) => (
+      {/* Tabs */}
+      <div className="flex gap-1 mb-8 bg-maasai-beige/20 dark:bg-maasai-brown-light/20 p-1 rounded-xl w-fit">
+        {TABS.map(({ id, label, Icon }) => (
           <button key={id} onClick={() => setTab(id)}
-            className={cn('px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px', tab === id ? 'border-maasai-red text-maasai-red' : 'border-transparent text-maasai-brown/60 dark:text-maasai-beige/60 hover:text-maasai-red')}>
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200',
+              tab === id
+                ? 'bg-white dark:bg-maasai-brown text-maasai-black dark:text-white shadow-sm'
+                : 'text-maasai-brown/60 dark:text-maasai-beige/60 hover:text-maasai-black dark:hover:text-white'
+            )}>
+            <Icon className="h-4 w-4" />
             {label}
           </button>
         ))}
@@ -73,14 +83,16 @@ export default function AuctionsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-24">
-          <Loader2 className="h-8 w-8 animate-spin text-maasai-red" />
+          <Loader2 className="h-7 w-7 animate-spin text-maasai-red" />
         </div>
       ) : listings.length === 0 ? (
         <div className="text-center py-24">
-          <Package className="h-16 w-16 mx-auto text-maasai-beige mb-4" />
-          <h3 className="font-bold text-lg text-maasai-black dark:text-white mb-1">No auctions found</h3>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-maasai-beige/30 mb-5">
+            <Package className="h-8 w-8 text-maasai-brown/40" />
+          </div>
+          <h3 className="font-semibold text-lg text-maasai-black dark:text-white mb-1">No auctions found</h3>
           <p className="text-maasai-brown/60 dark:text-maasai-beige/60 text-sm">
-            {tab === 'ending_soon' ? 'No auctions ending within 2 hours.' : tab === 'ended' ? 'No ended auctions to display.' : 'Check back soon for new auctions!'}
+            {tab === 'ending_soon' ? 'No auctions ending within 2 hours.' : tab === 'ended' ? 'No ended auctions to display.' : 'Check back soon for new auctions.'}
           </p>
         </div>
       ) : (
