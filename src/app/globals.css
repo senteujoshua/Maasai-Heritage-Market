@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    @apply bg-maasai-cream dark:bg-maasai-black text-maasai-black dark:text-white font-sans;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background-color: #B22222; color: white; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-maasai-beige/20; }
+  ::-webkit-scrollbar-thumb { @apply bg-maasai-brown/40 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-maasai-red/60; }
+}
+
+@layer components {
+  .section-container { @apply max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16; }
+  .section-title { @apply font-display font-bold text-2xl sm:text-3xl text-maasai-black dark:text-white; }
+  .card { @apply bg-white dark:bg-maasai-brown rounded-2xl border border-maasai-beige/40 dark:border-maasai-brown-light shadow-card; }
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl border-2 border-maasai-beige dark:border-maasai-brown-light
+           bg-white dark:bg-maasai-brown text-maasai-black dark:text-white text-sm
+           focus:outline-none focus:ring-2 focus:ring-maasai-red focus:border-transparent
+           placeholder:text-maasai-brown/40 dark:placeholder:text-maasai-beige/30;
+  }
+  .maasai-divider {
+    height: 3px;
+    background: repeating-linear-gradient(90deg, #B22222 0px, #B22222 8px, #1A0F00 8px, #1A0F00 16px, #D2B48C 16px, #D2B48C 24px);
+    border-radius: 2px;
+  }
+  .gradient-text {
+    background: linear-gradient(135deg, #B22222, #C1440E, #D4A017);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-overlay {
+    background: linear-gradient(180deg, rgba(26,15,0,0.7) 0%, rgba(26,15,0,0.3) 50%, rgba(193,68,14,0.2) 100%);
+  }
+}
+
+@keyframes auction-urgent {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(178,34,34,0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(178,34,34,0); }
+}
