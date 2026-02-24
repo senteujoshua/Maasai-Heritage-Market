@@ -19,6 +19,7 @@ export function Navbar() {
   const [query, setQuery] = useState('');
   const [user, setUser] = useState<Profile | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
   const supabase = createClient();
   const pathname = usePathname();
@@ -40,6 +41,8 @@ export function Navbar() {
     return () => subscription.unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 10);
@@ -68,9 +71,13 @@ export function Navbar() {
       scrolled ? 'bg-white/95 dark:bg-maasai-black/95 backdrop-blur-md shadow-sm' : 'bg-white dark:bg-maasai-black',
       'border-b border-maasai-beige/20 dark:border-maasai-brown/30'
     )}>
-      {/* Top Banner — suppressHydrationWarning prevents browser-extension DOM mutations from surfacing as errors */}
-      <div suppressHydrationWarning className="bg-maasai-black text-maasai-beige/80 text-xs py-1.5 text-center hidden sm:block tracking-wide">
-        Authentic Kenyan Cultural Marketplace · Fast Delivery Across Kenya · M-Pesa Accepted
+      {/* Top banner — rendered client-only so browser extensions can't cause SSR/hydration mismatches */}
+      <div className="bg-maasai-black hidden sm:block" style={{ height: '26px' }}>
+        {mounted && (
+          <p className="text-maasai-beige/80 text-xs py-1.5 text-center tracking-wide">
+            Authentic Kenyan Cultural Marketplace · Fast Delivery Across Kenya · M-Pesa Accepted
+          </p>
+        )}
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6">

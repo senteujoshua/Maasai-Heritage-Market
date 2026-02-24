@@ -1,7 +1,7 @@
 'use client';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, Eye, TrendingUp, ShoppingCart, MapPin } from 'lucide-react';
+import { Heart, Eye, TrendingUp, ShoppingCart, MapPin, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { AuctionTimer } from './AuctionTimer';
 import { formatKES, truncate } from '@/lib/utils';
@@ -79,9 +79,7 @@ export function ProductCard({ listing, userId, onAddToCart, className }: Product
                 {listing.seller.shop_name || listing.seller.full_name}
               </span>
               {listing.seller.is_verified && (
-                <svg className="h-3.5 w-3.5 text-maasai-blue fill-current flex-shrink-0" viewBox="0 0 24 24">
-                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
-                </svg>
+                <ShieldCheck className="h-3.5 w-3.5 text-maasai-red flex-shrink-0" />
               )}
             </div>
           )}

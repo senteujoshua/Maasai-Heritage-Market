@@ -218,10 +218,10 @@ export const KENYAN_REGIONS: KenyanRegion[] = [
 ];
 
 export const CATEGORIES = [
-  { name: 'Drawings & Art', slug: 'drawings-art', icon: '🎨' },
-  { name: 'Attire & Clothing', slug: 'attire-clothing', icon: '👘' },
-  { name: 'Beaded Jewelry', slug: 'beaded-jewelry', icon: '📿' },
-  { name: 'Cultural Tools', slug: 'cultural-tools', icon: '🪘' },
-  { name: 'Home Décor', slug: 'home-decor', icon: '🏺' },
-  { name: 'Shukas & Textiles', slug: 'shukas-textiles', icon: '🧣' },
+  { name: 'Drawings & Art',    slug: 'drawings-art',     icon: 'palette'  },
+  { name: 'Attire & Clothing', slug: 'attire-clothing',  icon: 'shirt'    },
+  { name: 'Beaded Jewelry',    slug: 'beaded-jewelry',   icon: 'gem'      },
+  { name: 'Cultural Tools',    slug: 'cultural-tools',   icon: 'hammer'   },
+  { name: 'Home Décor',        slug: 'home-decor',       icon: 'home'     },
+  { name: 'Shukas & Textiles', slug: 'shukas-textiles',  icon: 'layers'   },
 ];

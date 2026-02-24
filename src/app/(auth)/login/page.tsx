@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -7,8 +7,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
-import { Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { cn } from '@/lib/utils';
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
@@ -18,7 +19,6 @@ const GoogleIcon = () => (
     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
   </svg>
 );
-import { cn } from '@/lib/utils';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -26,7 +26,8 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-export default function LoginPage() {
+/* ─── Inner form — uses useSearchParams, must be inside Suspense ─── */
+function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -44,10 +45,7 @@ export default function LoginPage() {
       provider: 'google',
       options: { redirectTo: callbackUrl },
     });
-    if (error) {
-      toast.error(error.message);
-      setGoogleLoading(false);
-    }
+    if (error) { toast.error(error.message); setGoogleLoading(false); }
   }
 
   async function onSubmit(data: FormData) {
@@ -69,6 +67,66 @@ export default function LoginPage() {
   );
 
   return (
+    <div className="bg-white dark:bg-maasai-brown rounded-3xl shadow-2xl border border-maasai-beige/30 dark:border-maasai-brown-light p-8">
+      {/* Google */}
+      <button type="button" onClick={signInWithGoogle} disabled={googleLoading}
+        className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl border-2 border-maasai-beige dark:border-maasai-brown-light bg-white dark:bg-maasai-brown text-maasai-black dark:text-white text-sm font-semibold hover:border-maasai-red hover:bg-maasai-red/5 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+        {googleLoading ? <Loader2 className="h-5 w-5 animate-spin text-maasai-red" /> : <GoogleIcon />}
+        Continue with Google
+      </button>
+
+      <div className="flex items-center gap-3 my-5">
+        <div className="flex-1 h-px bg-maasai-beige dark:bg-maasai-brown-light" />
+        <span className="text-xs text-maasai-brown/50 dark:text-maasai-beige/50 font-medium">or sign in with email</span>
+        <div className="flex-1 h-px bg-maasai-beige dark:bg-maasai-brown-light" />
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <div>
+          <label className="block text-sm font-semibold text-maasai-brown dark:text-maasai-beige mb-2">Email Address</label>
+          <div className="relative">
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-maasai-brown/50" />
+            <input type="email" placeholder="you@email.com" autoComplete="email"
+              {...register('email')} className={inputCls(!!errors.email)} />
+          </div>
+          {errors.email && <p className="text-red-500 text-xs mt-1.5">{errors.email.message}</p>}
+        </div>
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-semibold text-maasai-brown dark:text-maasai-beige">Password</label>
+            <Link href="/forgot-password" className="text-xs text-maasai-red hover:underline">Forgot password?</Link>
+          </div>
+          <div className="relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-maasai-brown/50" />
+            <input type={showPassword ? 'text' : 'password'} placeholder="Enter your password"
+              autoComplete="current-password" {...register('password')}
+              className={cn(inputCls(!!errors.password), 'pr-12')} />
+            <button type="button" onClick={() => setShowPassword((p) => !p)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-maasai-brown/50 hover:text-maasai-brown transition-colors">
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
+          </div>
+          {errors.password && <p className="text-red-500 text-xs mt-1.5">{errors.password.message}</p>}
+        </div>
+        <Button type="submit" variant="primary" size="lg" fullWidth loading={loading}>Sign In</Button>
+      </form>
+
+      <div className="mt-6 text-center">
+        <p className="text-sm text-maasai-brown/70 dark:text-maasai-beige/70">
+          Don&apos;t have an account?{' '}
+          <Link href="/register" className="text-maasai-red font-semibold hover:underline">Join free</Link>
+        </p>
+      </div>
+      <div className="mt-5 flex items-center justify-center gap-1.5 text-xs text-maasai-brown/50 dark:text-maasai-beige/50">
+        <ShieldCheck className="h-3.5 w-3.5" /> Protected under Kenya Data Protection Act 2019
+      </div>
+    </div>
+  );
+}
+
+/* ─── Page shell ─── */
+export default function LoginPage() {
+  return (
     <div className="min-h-screen flex items-center justify-center bg-maasai-cream dark:bg-maasai-black p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
@@ -84,66 +142,13 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-maasai-black dark:text-white">Welcome back</h1>
           <p className="text-maasai-brown/70 dark:text-maasai-beige/70 mt-1 text-sm">Sign in to your account</p>
         </div>
-
-        <div className="bg-white dark:bg-maasai-brown rounded-3xl shadow-2xl border border-maasai-beige/30 dark:border-maasai-brown-light p-8">
-          <button
-            type="button"
-            onClick={signInWithGoogle}
-            disabled={googleLoading}
-            className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl border-2 border-maasai-beige dark:border-maasai-brown-light bg-white dark:bg-maasai-brown text-maasai-black dark:text-white text-sm font-semibold hover:border-maasai-red hover:bg-maasai-red/5 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {googleLoading ? (
-              <svg className="h-5 w-5 animate-spin text-maasai-red" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
-              </svg>
-            ) : (
-              <GoogleIcon />
-            )}
-            Continue with Google
-          </button>
-
-          <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px bg-maasai-beige dark:bg-maasai-brown-light" />
-            <span className="text-xs text-maasai-brown/50 dark:text-maasai-beige/50 font-medium">or sign in with email</span>
-            <div className="flex-1 h-px bg-maasai-beige dark:bg-maasai-brown-light" />
+        <Suspense fallback={
+          <div className="bg-white dark:bg-maasai-brown rounded-3xl shadow-2xl border border-maasai-beige/30 p-8 flex items-center justify-center min-h-[320px]">
+            <Loader2 className="h-8 w-8 animate-spin text-maasai-red" />
           </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div>
-              <label className="block text-sm font-semibold text-maasai-brown dark:text-maasai-beige mb-2">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-maasai-brown/50" />
-                <input type="email" placeholder="you@email.com" autoComplete="email" {...register('email')} className={inputCls(!!errors.email)} />
-              </div>
-              {errors.email && <p className="text-red-500 text-xs mt-1.5">{errors.email.message}</p>}
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-semibold text-maasai-brown dark:text-maasai-beige">Password</label>
-                <Link href="/forgot-password" className="text-xs text-maasai-red hover:underline">Forgot password?</Link>
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-maasai-brown/50" />
-                <input type={showPassword ? 'text' : 'password'} placeholder="Enter your password" autoComplete="current-password" {...register('password')} className={cn(inputCls(!!errors.password), 'pr-12')} />
-                <button type="button" onClick={() => setShowPassword((p) => !p)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-maasai-brown/50 hover:text-maasai-brown">
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-              {errors.password && <p className="text-red-500 text-xs mt-1.5">{errors.password.message}</p>}
-            </div>
-            <Button type="submit" variant="primary" size="lg" fullWidth loading={loading}>Sign In</Button>
-          </form>
-          <div className="mt-6 text-center">
-            <p className="text-sm text-maasai-brown/70 dark:text-maasai-beige/70">
-              Don&apos;t have an account?{' '}
-              <Link href="/register" className="text-maasai-red font-semibold hover:underline">Join free</Link>
-            </p>
-          </div>
-          <div className="mt-5 flex items-center justify-center gap-1.5 text-xs text-maasai-brown/50 dark:text-maasai-beige/50">
-            <ShieldCheck className="h-3.5 w-3.5" /> Protected under Kenya Data Protection Act 2019
-          </div>
-        </div>
+        }>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   );
