@@ -128,7 +128,7 @@ export function CategoryFilter({ filters, onChange, className }: CategoryFilterP
     <>
       {/* Desktop sidebar */}
       <div className={cn('hidden lg:block', className)}>
-        <div className="sticky top-24 bg-white dark:bg-maasai-brown rounded-2xl border border-maasai-beige/40 dark:border-maasai-brown-light p-6 shadow-card">
+        <div className="sticky top-20 lg:top-24 bg-white dark:bg-maasai-brown rounded-2xl border border-maasai-beige/40 dark:border-maasai-brown-light p-6 shadow-card">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="h-4 w-4 text-maasai-red" />

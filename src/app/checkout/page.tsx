@@ -243,7 +243,7 @@ export default function CheckoutPage() {
 
           {/* SUMMARY */}
           <div>
-            <div className="bg-white dark:bg-maasai-brown rounded-2xl border border-maasai-beige/30 dark:border-maasai-brown-light p-5 sticky top-24">
+            <div className="bg-white dark:bg-maasai-brown rounded-2xl border border-maasai-beige/30 dark:border-maasai-brown-light p-5 sticky top-20 lg:top-24">
               <h2 className="font-bold text-maasai-black dark:text-white mb-4">Order Summary</h2>
               <div className="space-y-2 text-sm text-maasai-brown/70 dark:text-maasai-beige/70 mb-4">
                 <div className="flex justify-between"><span>{items.length} item{items.length !== 1 ? 's' : ''}</span><span>{formatKES(total)}</span></div>

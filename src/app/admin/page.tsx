@@ -210,9 +210,9 @@ export default function AdminDashboardPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
 
       {/* HEADER */}
-      <div className="flex items-start justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-8">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 bg-maasai-red/10 rounded-xl flex items-center justify-center">
+          <div className="w-11 h-11 bg-maasai-red/10 rounded-xl flex items-center justify-center flex-shrink-0">
             <ShieldCheck className="h-5 w-5 text-maasai-red" />
           </div>
           <div>
@@ -223,7 +223,7 @@ export default function AdminDashboardPage() {
         <button
           onClick={() => fetchAdminData(true)}
           disabled={refreshing}
-          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-maasai-brown/60 dark:text-maasai-beige/60 hover:text-maasai-red border border-maasai-beige/40 dark:border-maasai-brown-light rounded-xl transition-colors"
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-maasai-brown/60 dark:text-maasai-beige/60 hover:text-maasai-red border border-maasai-beige/40 dark:border-maasai-brown-light rounded-xl transition-colors self-start"
         >
           <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
           Refresh
@@ -260,7 +260,7 @@ export default function AdminDashboardPage() {
       {/* ── OVERVIEW ─────────────────────────────────────────────────────── */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {[
               { label: 'Total Users',       value: stats.totalUsers.toLocaleString(),    Icon: Users,         color: 'text-maasai-red' },
               { label: 'Total Listings',    value: stats.totalListings.toLocaleString(), Icon: Package,       color: 'text-maasai-red' },

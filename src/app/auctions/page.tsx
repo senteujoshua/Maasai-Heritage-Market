@@ -66,7 +66,7 @@ export default function AuctionsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-8 bg-maasai-beige/20 dark:bg-maasai-brown-light/20 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 mb-8 bg-maasai-beige/20 dark:bg-maasai-brown-light/20 p-1 rounded-xl w-fit max-w-full overflow-x-auto">
         {TABS.map(({ id, label, Icon }) => (
           <button key={id} onClick={() => setTab(id)}
             className={cn(

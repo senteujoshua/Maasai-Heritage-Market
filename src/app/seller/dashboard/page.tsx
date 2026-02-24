@@ -96,9 +96,9 @@ export default function SellerDashboardPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
 
       {/* HEADER */}
-      <div className="flex items-start justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold font-display text-maasai-black dark:text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold font-display text-maasai-black dark:text-white flex items-center gap-2 flex-wrap">
             Seller Dashboard
             {isVerified && <VerifiedArtisanBadge />}
           </h1>
@@ -106,7 +106,7 @@ export default function SellerDashboardPage() {
             {profile?.shop_name || profile?.full_name}
           </p>
         </div>
-        <Link href="/seller/listings/new">
+        <Link href="/seller/listings/new" className="self-start">
           <Button variant="primary">
             <Plus className="h-4 w-4 mr-2" /> New Listing
           </Button>

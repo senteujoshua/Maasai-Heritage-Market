@@ -97,7 +97,7 @@ function MarketplaceContent() {
       </div>
 
       <div className="flex gap-6">
-        <div className="w-60 flex-shrink-0">
+        <div className="hidden lg:block w-60 flex-shrink-0">
           <CategoryFilter filters={filters} onChange={handleFiltersChange} />
         </div>
         <div className="flex-1 min-w-0">
