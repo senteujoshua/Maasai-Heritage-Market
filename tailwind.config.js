@@ -41,10 +41,12 @@ module.exports = {
         'hero-gradient':   'linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, rgba(109,0,26,0.3) 100%)',
       },
       animation: {
-        'bead-pulse': 'bead-pulse 1.5s ease-in-out infinite',
-        'fade-in':    'fadeIn 0.5s ease-in-out',
-        'slide-up':   'slideUp 0.4s ease-out',
-        'shimmer':    'shimmer 2s linear infinite',
+        'bead-pulse':  'bead-pulse 1.5s ease-in-out infinite',
+        'fade-in':     'fadeIn 0.5s ease-in-out',
+        'slide-up':    'slideUp 0.4s ease-out',
+        'shimmer':     'shimmer 2s linear infinite',
+        'scan-line':   'scanLine 2s linear infinite',
+        'scale-in':    'scaleIn 0.3s ease-out',
       },
       keyframes: {
         'bead-pulse': {
@@ -62,6 +64,15 @@ module.exports = {
         'shimmer': {
           '0%':   { backgroundPosition: '-1000px 0' },
           '100%': { backgroundPosition: '1000px 0' },
+        },
+        'scanLine': {
+          '0%':   { top: '0%',   opacity: '1' },
+          '50%':  { top: '100%', opacity: '1' },
+          '100%': { top: '0%',   opacity: '1' },
+        },
+        'scaleIn': {
+          '0%':   { transform: 'scale(0.5)', opacity: '0' },
+          '100%': { transform: 'scale(1)',   opacity: '1' },
         },
       },
       boxShadow: {

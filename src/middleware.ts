@@ -1,9 +1,44 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import type { UserRole } from '@/types';
 
-const protectedRoutes = ['/seller', '/admin', '/checkout', '/cart', '/profile', '/orders'];
-const sellerOnlyRoutes = ['/seller/dashboard', '/seller/listings'];
-const adminOnlyRoutes = ['/admin'];
+// ── Route definitions ─────────────────────────────────────────────────────────
+
+/** Any route that requires authentication */
+const PROTECTED_ROUTES = [
+  '/seller',
+  '/admin',
+  '/manager',
+  '/agent',
+  '/checkout',
+  '/cart',
+  '/profile',
+  '/orders',
+];
+
+/** Routes accessible only to CEO / admin */
+const CEO_ROUTES = ['/admin'];
+
+/** Routes accessible to Manager + CEO */
+const MANAGER_ROUTES = ['/manager'];
+
+/** Routes accessible only to Agents */
+const AGENT_ROUTES = ['/agent'];
+
+/** Routes only for Sellers (+ staff) */
+const SELLER_ROUTES = ['/seller/dashboard', '/seller/listings'];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function isCEO(role: UserRole | undefined | null): boolean {
+  return role === 'ceo' || role === 'admin'; // 'admin' kept for backwards-compat
+}
+
+function isManagerOrAbove(role: UserRole | undefined | null): boolean {
+  return isCEO(role) || role === 'manager';
+}
+
+// ── Middleware ────────────────────────────────────────────────────────────────
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -13,7 +48,9 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return request.cookies.getAll(); },
+        getAll() {
+          return request.cookies.getAll();
+        },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({ request });
@@ -25,32 +62,58 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // IMPORTANT: Do not run code between createServerClient and supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isProtected = protectedRoutes.some((r) => pathname.startsWith(r));
+
+  // ── 1. Check if route needs auth ────────────────────────────────────────────
+  const isProtected = PROTECTED_ROUTES.some((r) => pathname.startsWith(r));
 
   if (isProtected && !user) {
-    const url = new URL('/login', request.url);
-    url.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(url);
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
+  // ── 2. Role-based route enforcement ─────────────────────────────────────────
   if (user && isProtected) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, town')
       .eq('id', user.id)
       .single();
 
-    if (profile) {
-      const isSellerRoute = sellerOnlyRoutes.some((r) => pathname.startsWith(r));
-      const isAdminRoute = adminOnlyRoutes.some((r) => pathname.startsWith(r));
-      if (isSellerRoute && profile.role !== 'seller' && profile.role !== 'admin') {
-        return NextResponse.redirect(new URL('/?error=seller_only', request.url));
+    const role = profile?.role as UserRole | undefined;
+
+    // /admin/* — CEO / admin only
+    if (CEO_ROUTES.some((r) => pathname.startsWith(r))) {
+      if (!isCEO(role)) {
+        return NextResponse.redirect(new URL('/dashboard?error=ceo_only', request.url));
       }
-      if (isAdminRoute && profile.role !== 'admin') {
-        return NextResponse.redirect(new URL('/?error=admin_only', request.url));
+    }
+
+    // /manager/* — Manager + CEO
+    if (MANAGER_ROUTES.some((r) => pathname.startsWith(r))) {
+      if (!isManagerOrAbove(role)) {
+        return NextResponse.redirect(new URL('/dashboard?error=manager_only', request.url));
+      }
+    }
+
+    // /agent/* — Agents only
+    if (AGENT_ROUTES.some((r) => pathname.startsWith(r))) {
+      if (role !== 'agent') {
+        return NextResponse.redirect(new URL('/dashboard?error=agent_only', request.url));
+      }
+    }
+
+    // /seller/* — Seller + staff
+    if (SELLER_ROUTES.some((r) => pathname.startsWith(r))) {
+      const canAccessSeller = role === 'seller' || isManagerOrAbove(role) || isCEO(role);
+      if (!canAccessSeller) {
+        return NextResponse.redirect(new URL('/?error=seller_only', request.url));
       }
     }
   }

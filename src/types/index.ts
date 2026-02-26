@@ -1,4 +1,4 @@
-export type UserRole = 'buyer' | 'seller' | 'admin';
+export type UserRole = 'buyer' | 'seller' | 'admin' | 'ceo' | 'manager' | 'agent';
 export type VerificationStatus = 'not_submitted' | 'pending' | 'approved' | 'rejected';
 export type ListingType = 'fixed' | 'auction';
 export type ListingStatus = 'draft' | 'pending_approval' | 'active' | 'sold' | 'ended' | 'rejected';
@@ -16,6 +16,9 @@ export interface Profile {
   avatar_url: string | null;
   bio: string | null;
   role: UserRole;
+  town: string | null;           // Agents: assigned town (e.g. 'Nairobi', 'Narok')
+  assigned_by: string | null;   // Who assigned this role
+  role_notes: string | null;    // Internal notes for agent territory etc.
   is_verified: boolean;
   verification_status: VerificationStatus;
   national_id_url: string | null;
@@ -119,26 +122,63 @@ export interface ShippingAddress {
 export interface Order {
   id: string;
   buyer_id: string;
-  seller_id: string;
-  listing_id: string;
-  quantity: number;
-  unit_price: number;
-  total_amount: number;
-  platform_commission: number;
-  seller_amount: number;
+  items: OrderItem[];
+  subtotal: number;
+  delivery_fee: number;
+  total: number;
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
-  order_status: OrderStatus;
-  shipping_address: ShippingAddress;
-  tracking_number: string | null;
-  mpesa_reference: string | null;
-  mpesa_receipt: string | null;
-  notes: string | null;
+  status: OrderStatus;
+  shipping_address: ShippingAddress | null;
+  tracking_code: string | null;          // Barcode/QR value on packing slip
+  town: string | null;                   // Delivery town for agent filtering
+  assigned_agent_id: string | null;      // Agent assigned to deliver this order
+  agent_notes: string | null;            // Agent field notes
+  mpesa_checkout_request_id: string | null;
+  mpesa_receipt_number: string | null;
+  failure_reason: string | null;
+  paid_at: string | null;
+  scanned_at: string | null;
+  picked_up_at: string | null;
+  in_transit_at: string | null;
+  cash_confirmed_at: string | null;  // COD: agent confirmed cash received
+  delivered_at: string | null;
   created_at: string;
   updated_at: string;
   buyer?: Profile;
-  seller?: Profile;
-  listing?: Listing;
+  assigned_agent?: Profile;
+}
+
+export interface OrderItem {
+  listing_id: string;
+  title: string;
+  quantity: number;
+  unit_price: number;
+  image_url?: string;
+}
+
+export interface Dispute {
+  id: string;
+  order_id: string;
+  raised_by: string;
+  assigned_to: string | null;
+  reason: string;
+  details: string | null;
+  status: 'open' | 'investigating' | 'resolved' | 'closed';
+  resolution: string | null;
+  created_at: string;
+  updated_at: string;
+  order?: Order;
+  raiser?: Profile;
+  assignee?: Profile;
+}
+
+export interface PlatformSetting {
+  key: string;
+  value: unknown;
+  description: string | null;
+  updated_by: string | null;
+  updated_at: string;
 }
 
 export interface Review {
@@ -168,7 +208,7 @@ export interface Message {
 export interface Notification {
   id: string;
   user_id: string;
-  type: 'bid_placed' | 'outbid' | 'auction_won' | 'auction_ended' | 'order_confirmed' | 'order_shipped' | 'order_delivered' | 'new_message' | 'verification_update' | 'listing_approved';
+  type: 'bid_placed' | 'outbid' | 'auction_won' | 'auction_ended' | 'order_confirmed' | 'order_shipped' | 'order_delivered' | 'new_message' | 'verification_update' | 'listing_approved' | 'order_assigned' | 'order_processing';
   title: string;
   message: string;
   data: Record<string, unknown>;
@@ -216,6 +256,25 @@ export const KENYAN_REGIONS: KenyanRegion[] = [
   'Nairobi', 'Narok', 'Kajiado', 'Mombasa', 'Kisumu',
   'Nakuru', 'Eldoret', 'Nyeri', 'Meru', 'Thika', 'Other',
 ];
+
+// Towns used for agent assignment
+export const KENYAN_TOWNS = [
+  'Nairobi CBD', 'Westlands', 'Kasarani', 'Embakasi', 'Langata',
+  'Narok', 'Kajiado', 'Ngong', 'Ongata Rongai',
+  'Mombasa', 'Nyali', 'Bamburi', 'Likoni',
+  'Kisumu', 'Nakuru', 'Eldoret', 'Nyeri', 'Meru', 'Thika',
+] as const;
+
+export type KenyanTown = typeof KENYAN_TOWNS[number];
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  buyer:   'Buyer',
+  seller:  'Seller',
+  admin:   'Admin',
+  ceo:     'CEO / Super Admin',
+  manager: 'Manager',
+  agent:   'Field Agent',
+};
 
 export const CATEGORIES = [
   { name: 'Drawings & Art',    slug: 'drawings-art',     icon: 'palette'  },

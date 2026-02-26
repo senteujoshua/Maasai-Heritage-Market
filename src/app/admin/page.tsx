@@ -518,7 +518,7 @@ function UsersTab() {
   const [users, setUsers]       = useState<UserRow[]>([]);
   const [loading, setLoading]   = useState(true);
   const [query, setQuery]       = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'buyer' | 'seller' | 'admin'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'buyer' | 'seller' | 'admin' | 'ceo' | 'manager' | 'agent'>('all');
   const [changingRole, setChangingRole] = useState<string | null>(null);
 
   useEffect(() => {
@@ -530,10 +530,12 @@ function UsersTab() {
       .then(({ data }) => { setUsers((data as UserRow[]) || []); setLoading(false); });
   }, []);
 
-  async function changeRole(userId: string, newRole: string) {
+  async function changeRole(userId: string, newRole: string, town?: string) {
     setChangingRole(userId);
     const supabase = createClient();
-    const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+    const updates: Record<string, string> = { role: newRole };
+    if (newRole === 'agent' && town) updates.town = town;
+    const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
     if (error) { toast.error('Failed to update role'); }
     else {
       setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, role: newRole } : u));
@@ -550,9 +552,12 @@ function UsersTab() {
   });
 
   const roleBadge: Record<string, string> = {
-    admin:  'bg-maasai-red text-white',
-    seller: 'bg-maasai-brown text-white dark:bg-maasai-brown-light',
-    buyer:  'bg-maasai-beige/40 text-maasai-brown dark:text-maasai-beige border border-maasai-beige/60',
+    admin:   'bg-maasai-red text-white',
+    ceo:     'bg-purple-700 text-white',
+    manager: 'bg-indigo-600 text-white',
+    agent:   'bg-amber-600 text-white',
+    seller:  'bg-maasai-brown text-white dark:bg-maasai-brown-light',
+    buyer:   'bg-maasai-beige/40 text-maasai-brown dark:text-maasai-beige border border-maasai-beige/60',
   };
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-maasai-red" /></div>;
@@ -569,8 +574,8 @@ function UsersTab() {
             className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-maasai-beige dark:border-maasai-brown-light bg-white dark:bg-maasai-brown text-sm text-maasai-black dark:text-white focus:outline-none focus:ring-2 focus:ring-maasai-red placeholder:text-maasai-beige"
           />
         </div>
-        <div className="flex gap-1 p-1 bg-maasai-beige/20 dark:bg-maasai-brown-light/20 rounded-xl">
-          {(['all', 'buyer', 'seller', 'admin'] as const).map((r) => (
+        <div className="flex gap-1 p-1 bg-maasai-beige/20 dark:bg-maasai-brown-light/20 rounded-xl flex-wrap">
+          {(['all', 'buyer', 'seller', 'admin', 'ceo', 'manager', 'agent'] as const).map((r) => (
             <button key={r} onClick={() => setRoleFilter(r)}
               className={cn('px-3 py-1.5 text-xs font-semibold rounded-lg capitalize transition-colors', roleFilter === r ? 'bg-white dark:bg-maasai-brown text-maasai-red shadow-sm' : 'text-maasai-brown/60 dark:text-maasai-beige/60 hover:text-maasai-red')}>
               {r} {r !== 'all' && `(${users.filter(u => u.role === r).length})`}
@@ -617,8 +622,9 @@ function UsersTab() {
                   <td className="px-4 py-3">
                     <RoleDropdown
                       currentRole={user.role}
+                      userId={user.id}
                       loading={changingRole === user.id}
-                      onChange={(newRole) => changeRole(user.id, newRole)}
+                      onChange={(newRole, town) => changeRole(user.id, newRole, town)}
                     />
                   </td>
                 </tr>
@@ -631,21 +637,70 @@ function UsersTab() {
   );
 }
 
-/* ─── Role Dropdown ──────────────────────────────────────────────────────── */
-function RoleDropdown({ currentRole, loading, onChange }: { currentRole: string; loading: boolean; onChange: (r: string) => void }) {
-  const [open, setOpen] = useState(false);
+/* ─── Role Dropdown (with town assignment for agents) ────────────────────── */
+const ROLE_LABELS: Record<string, string> = {
+  buyer:   'Buyer',
+  seller:  'Seller',
+  admin:   'Admin',
+  ceo:     'CEO / Super Admin',
+  manager: 'Manager',
+  agent:   'Field Agent',
+};
+
+const KENYAN_TOWNS = [
+  'Nairobi CBD', 'Westlands', 'Kasarani', 'Embakasi', 'Langata',
+  'Narok', 'Kajiado', 'Ngong', 'Ongata Rongai',
+  'Mombasa', 'Nyali', 'Bamburi', 'Likoni',
+  'Kisumu', 'Nakuru', 'Eldoret', 'Nyeri', 'Meru', 'Thika',
+];
+
+function RoleDropdown({
+  currentRole,
+  userId,
+  loading,
+  onChange,
+}: {
+  currentRole: string;
+  userId: string;
+  loading: boolean;
+  onChange: (role: string, town?: string) => void;
+}) {
+  const [open, setOpen]         = useState(false);
+  const [pendingRole, setPending] = useState<string | null>(null);
+  const [town, setTown]           = useState('');
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false); setPending(null); setTown('');
+      }
+    }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  function selectRole(role: string) {
+    if (role === 'agent') {
+      setPending('agent');  // show town picker inline
+    } else {
+      onChange(role);
+      setOpen(false);
+    }
+  }
+
+  function confirmAgent() {
+    if (!town) { toast.error('Please select a town for this agent'); return; }
+    onChange('agent', town);
+    setOpen(false);
+    setPending(null);
+    setTown('');
+  }
+
   return (
     <div className="relative" ref={ref}>
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => { setOpen((o) => !o); setPending(null); }}
         disabled={loading}
         className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-maasai-beige/40 dark:border-maasai-brown-light hover:border-maasai-red text-maasai-brown/70 dark:text-maasai-beige/70 hover:text-maasai-red transition-colors"
       >
@@ -653,17 +708,57 @@ function RoleDropdown({ currentRole, loading, onChange }: { currentRole: string;
         Change role
         <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
       </button>
+
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-36 bg-white dark:bg-maasai-brown rounded-xl border border-maasai-beige/40 dark:border-maasai-brown-light shadow-lg z-10 overflow-hidden">
-          {['buyer', 'seller', 'admin'].filter((r) => r !== currentRole).map((role) => (
-            <button
-              key={role}
-              onClick={() => { onChange(role); setOpen(false); }}
-              className="w-full text-left px-4 py-2.5 text-sm capitalize text-maasai-black dark:text-white hover:bg-maasai-beige/20 dark:hover:bg-maasai-brown-light/30 transition-colors"
-            >
-              {role}
-            </button>
-          ))}
+        <div className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-maasai-brown rounded-xl border border-maasai-beige/40 dark:border-maasai-brown-light shadow-lg z-10 overflow-hidden">
+          {pendingRole === 'agent' ? (
+            /* Town picker for agents */
+            <div className="p-3 space-y-2">
+              <p className="text-xs font-semibold text-maasai-brown/70 dark:text-maasai-beige/70">
+                Assign town for this agent:
+              </p>
+              <select
+                value={town}
+                onChange={(e) => setTown(e.target.value)}
+                className="w-full text-sm border border-maasai-beige/40 dark:border-maasai-brown-light rounded-lg px-2 py-1.5 bg-white dark:bg-maasai-brown dark:text-white focus:outline-none focus:ring-1 focus:ring-maasai-red"
+              >
+                <option value="">Select town…</option>
+                {KENYAN_TOWNS.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <button
+                  onClick={confirmAgent}
+                  className="flex-1 py-1.5 text-xs bg-maasai-red text-white rounded-lg font-semibold hover:bg-maasai-red-dark"
+                >
+                  Assign Agent
+                </button>
+                <button
+                  onClick={() => { setPending(null); setTown(''); }}
+                  className="px-2 py-1.5 text-xs border border-maasai-beige/40 rounded-lg hover:bg-maasai-beige/20"
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Role list */
+            ['buyer', 'seller', 'agent', 'manager', 'ceo']
+              .filter((r) => r !== currentRole && !(r === 'admin' && currentRole === 'ceo'))
+              .map((role) => (
+                <button
+                  key={role}
+                  onClick={() => selectRole(role)}
+                  className="w-full text-left px-4 py-2.5 text-sm text-maasai-black dark:text-white hover:bg-maasai-beige/20 dark:hover:bg-maasai-brown-light/30 transition-colors flex items-center justify-between"
+                >
+                  <span>{ROLE_LABELS[role] ?? role}</span>
+                  {role === 'agent' && (
+                    <span className="text-xs text-maasai-beige">→ pick town</span>
+                  )}
+                </button>
+              ))
+          )}
         </div>
       )}
     </div>
