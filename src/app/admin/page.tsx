@@ -36,6 +36,7 @@ interface UserRow {
   id: string; full_name: string; email: string; role: string;
   is_verified: boolean; verification_status: string; created_at: string;
   total_sales: number; rating: number; shop_name: string | null;
+  town: string | null;
 }
 
 interface OrderRow {
@@ -116,6 +117,7 @@ export default function AdminDashboardPage() {
   const [stats, setStats]                         = useState<PlatformStats>({ totalUsers: 0, totalListings: 0, totalOrders: 0, totalRevenue: 0, pendingListings: 0, pendingVerifications: 0, platformEarnings: 0 });
   const [loading, setLoading]                     = useState(true);
   const [refreshing, setRefreshing]               = useState(false);
+  const [fetchError, setFetchError]               = useState<string | null>(null);
 
   // Reject modal state
   const [rejectTarget, setRejectTarget] = useState<{ id: string; name: string; type: 'listing' | 'verification' } | null>(null);
@@ -129,35 +131,50 @@ export default function AdminDashboardPage() {
 
   async function fetchAdminData(silent = false) {
     if (!silent) setLoading(true); else setRefreshing(true);
+    setFetchError(null);
     const supabase = createClient();
-    const [listingsRes, verificationsRes, usersCountRes, ordersRes, allListingsCount] = await Promise.all([
-      supabase.from('listings')
-        .select(`id, title, price, listing_type, created_at, seller:profiles(full_name, shop_name, is_verified), images:listing_images(image_url, is_primary), category:categories(name)`)
-        .eq('is_approved', false).neq('status', 'rejected')
-        .order('created_at', { ascending: true }).limit(100),
-      supabase.from('profiles')
-        .select('id, full_name, email, phone, national_id_url, kra_pin_url, created_at, shop_name')
-        .eq('verification_status', 'pending').eq('role', 'seller')
-        .order('created_at', { ascending: true }).limit(100),
-      supabase.from('profiles').select('id', { count: 'exact', head: true }),
-      supabase.from('orders').select('total, payment_status'),
-      supabase.from('listings').select('id', { count: 'exact', head: true }),
+
+    // All three calls use SECURITY DEFINER RPCs — bypasses RLS entirely,
+    // fixes the 'order_status' column bug, the invalid listing FK join,
+    // and the 'paid' vs 'completed' payment_status mismatch.
+    const [statsRes, listingsRes, verificationsRes] = await Promise.all([
+      supabase.rpc('get_admin_stats'),
+      supabase.rpc('get_pending_listings_admin'),
+      supabase.rpc('get_pending_verifications_admin'),
     ]);
 
-    const completedOrders = (ordersRes.data || []).filter((o) => o.payment_status === 'paid' || o.payment_status === 'completed');
-    const totalRevenue = completedOrders.reduce((s, o) => s + (o.total || 0), 0);
+    if (statsRes.error) {
+      const msg = statsRes.error.message;
+      setFetchError(msg);
+      toast.error(`Stats: ${msg}`);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
 
-    setPendingListings((listingsRes.data as unknown as PendingListing[]) || []);
-    setPendingVerifications((verificationsRes.data as unknown as PendingVerification[]) || []);
+    const s = statsRes.data as Record<string, number>;
     setStats({
-      totalUsers:            usersCountRes.count || 0,
-      totalListings:         allListingsCount.count || 0,
-      totalOrders:           ordersRes.data?.length || 0,
-      totalRevenue,
-      pendingListings:       listingsRes.data?.length || 0,
-      pendingVerifications:  verificationsRes.data?.length || 0,
-      platformEarnings:      totalRevenue * 0.09,
+      totalUsers:           s.totalUsers           || 0,
+      totalListings:        s.totalListings         || 0,
+      totalOrders:          s.totalOrders           || 0,
+      totalRevenue:         s.totalRevenue          || 0,
+      pendingListings:      s.pendingListings        || 0,
+      pendingVerifications: s.pendingVerifications  || 0,
+      platformEarnings:     s.platformEarnings      || 0,
     });
+
+    if (listingsRes.error) {
+      toast.error(`Listings: ${listingsRes.error.message}`);
+    } else {
+      setPendingListings((listingsRes.data as unknown as PendingListing[]) || []);
+    }
+
+    if (verificationsRes.error) {
+      toast.error(`Verifications: ${verificationsRes.error.message}`);
+    } else {
+      setPendingVerifications((verificationsRes.data as unknown as PendingVerification[]) || []);
+    }
+
     setLoading(false);
     setRefreshing(false);
   }
@@ -201,6 +218,24 @@ export default function AdminDashboardPage() {
 
   if (authLoading || loading) {
     return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-maasai-red" /></div>;
+  }
+
+  if (fetchError) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16 text-center">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-2xl p-8 space-y-4">
+          <AlertTriangle className="h-10 w-10 text-red-500 mx-auto" />
+          <h2 className="text-lg font-bold text-red-800 dark:text-red-200">Admin data failed to load</h2>
+          <p className="text-sm text-red-700 dark:text-red-300 font-mono bg-red-100 dark:bg-red-900/40 rounded-lg px-4 py-2">{fetchError}</p>
+          <p className="text-xs text-red-600 dark:text-red-400">
+            Run <strong>003_fix_role_rls.sql</strong> then <strong>004_admin_rpcs.sql</strong> in Supabase SQL Editor, then refresh.
+          </p>
+          <Button variant="primary" onClick={() => fetchAdminData()}>
+            <RefreshCw className="h-4 w-4" /> Retry
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   /* ── Badge counts for tabs ── */
@@ -439,12 +474,14 @@ function OrdersTab() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase
-      .from('orders')
-      .select(`id, total, payment_status, order_status, created_at, payment_method, buyer:profiles!buyer_id(full_name, email), listing:listings(title)`)
-      .order('created_at', { ascending: false })
-      .limit(200)
-      .then(({ data }) => { setOrders((data as unknown as OrderRow[]) || []); setLoading(false); });
+    // RPC fixes: invalid listing FK join, 'order_status' vs 'status' column,
+    // and 'paid' vs 'completed' payment_status enum value.
+    supabase.rpc('get_all_orders_admin')
+      .then(({ data, error }) => {
+        if (error) toast.error(`Orders: ${error.message}`);
+        setOrders((data as unknown as OrderRow[]) || []);
+        setLoading(false);
+      });
   }, []);
 
   const filtered = filter === 'all' ? orders : orders.filter((o) => o.payment_status === filter);
@@ -526,23 +563,33 @@ function UsersTab() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.from('profiles')
-      .select('id, full_name, email, role, is_verified, verification_status, created_at, total_sales, rating, shop_name')
-      .order('created_at', { ascending: false })
-      .limit(500)
-      .then(({ data }) => { setUsers((data as UserRow[]) || []); setLoading(false); });
+    // RPC bypasses RLS so CEO/Manager see all users, not just themselves.
+    supabase.rpc('get_all_users_admin')
+      .then(({ data, error }) => {
+        if (error) toast.error(`Users: ${error.message}`);
+        setUsers((data as unknown as UserRow[]) || []);
+        setLoading(false);
+      });
   }, []);
 
   async function changeRole(userId: string, newRole: string, town?: string) {
     setChangingRole(userId);
     const supabase = createClient();
-    const updates: Record<string, string> = { role: newRole };
-    if (newRole === 'agent' && town) updates.town = town;
-    const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
-    if (error) { toast.error('Failed to update role'); }
-    else {
-      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, role: newRole } : u));
-      toast.success(`Role updated to ${newRole}`);
+    // Use SECURITY DEFINER RPC — direct .update() silently fails when
+    // RLS blocks it (returns error:null but 0 rows updated), so the
+    // optimistic UI update showed the new role but the DB never changed.
+    const { data, error } = await supabase.rpc('update_user_role', {
+      p_target_user_id: userId,
+      p_new_role:       newRole,
+      p_town:           town ?? null,
+    });
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || 'Failed to update role');
+    } else {
+      setUsers((prev) => prev.map((u) =>
+        u.id === userId ? { ...u, role: newRole } : u
+      ));
+      toast.success(`Role updated to ${ROLE_LABELS[newRole as UserRole] ?? newRole}`);
     }
     setChangingRole(null);
   }
@@ -607,6 +654,9 @@ function UsersTab() {
                     <p className="font-medium text-maasai-black dark:text-white text-sm">{user.full_name || '—'}</p>
                     <p className="text-maasai-brown/50 dark:text-maasai-beige/50 text-xs">{user.email}</p>
                     {user.shop_name && <p className="text-maasai-red text-xs mt-0.5">{user.shop_name}</p>}
+                    {user.role === 'agent' && user.town && (
+                      <p className="text-amber-600 text-xs mt-0.5 font-medium">{user.town}</p>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={cn('px-2.5 py-1 rounded-full text-xs font-bold', roleBadge[user.role] || roleBadge.buyer)}>
