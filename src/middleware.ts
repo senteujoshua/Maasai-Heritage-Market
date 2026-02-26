@@ -91,21 +91,21 @@ export async function middleware(request: NextRequest) {
     // /admin/* — CEO / admin only
     if (CEO_ROUTES.some((r) => pathname.startsWith(r))) {
       if (!isCEO(role)) {
-        return NextResponse.redirect(new URL('/dashboard?error=ceo_only', request.url));
+        return NextResponse.redirect(new URL('/?error=ceo_only', request.url));
       }
     }
 
     // /manager/* — Manager + CEO
     if (MANAGER_ROUTES.some((r) => pathname.startsWith(r))) {
       if (!isManagerOrAbove(role)) {
-        return NextResponse.redirect(new URL('/dashboard?error=manager_only', request.url));
+        return NextResponse.redirect(new URL('/?error=manager_only', request.url));
       }
     }
 
     // /agent/* — Agents only
     if (AGENT_ROUTES.some((r) => pathname.startsWith(r))) {
       if (role !== 'agent') {
-        return NextResponse.redirect(new URL('/dashboard?error=agent_only', request.url));
+        return NextResponse.redirect(new URL('/?error=agent_only', request.url));
       }
     }
 

@@ -13,6 +13,8 @@ import {
   BarChart2, Gavel, Tag, Search, ShoppingBag, RefreshCw,
   ChevronDown, UserCog, X,
 } from 'lucide-react';
+import { ROLE_LABELS } from '@/types';
+import type { UserRole } from '@/types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 
@@ -607,8 +609,8 @@ function UsersTab() {
                     {user.shop_name && <p className="text-maasai-red text-xs mt-0.5">{user.shop_name}</p>}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={cn('px-2.5 py-1 rounded-full text-xs font-bold capitalize', roleBadge[user.role] || roleBadge.buyer)}>
-                      {user.role}
+                    <span className={cn('px-2.5 py-1 rounded-full text-xs font-bold', roleBadge[user.role] || roleBadge.buyer)}>
+                      {ROLE_LABELS[user.role as UserRole] ?? user.role}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -639,14 +641,6 @@ function UsersTab() {
 }
 
 /* ─── Role Dropdown (with town assignment for agents) ────────────────────── */
-const ROLE_LABELS: Record<string, string> = {
-  buyer:   'Buyer',
-  seller:  'Seller',
-  admin:   'Admin',
-  ceo:     'CEO / Super Admin',
-  manager: 'Manager',
-  agent:   'Field Agent',
-};
 
 const KENYAN_TOWNS = [
   'Nairobi CBD', 'Westlands', 'Kasarani', 'Embakasi', 'Langata',
@@ -753,7 +747,7 @@ function RoleDropdown({
                   onClick={() => selectRole(role)}
                   className="w-full text-left px-4 py-2.5 text-sm text-maasai-black dark:text-white hover:bg-maasai-beige/20 dark:hover:bg-maasai-brown-light/30 transition-colors flex items-center justify-between"
                 >
-                  <span>{ROLE_LABELS[role] ?? role}</span>
+                  <span>{ROLE_LABELS[role as UserRole] ?? role}</span>
                   {role === 'agent' && (
                     <span className="text-xs text-maasai-beige">→ pick town</span>
                   )}

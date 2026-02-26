@@ -10,7 +10,8 @@ import { useTheme } from 'next-themes';
 import { createClient } from '@/lib/supabase/client';
 import { useCart } from '@/hooks/useCart';
 import { cn } from '@/lib/utils';
-import type { Profile } from '@/types';
+import type { Profile, UserRole } from '@/types';
+import { ROLE_LABELS } from '@/types';
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -152,7 +153,7 @@ export function Navbar() {
                       {/* User info */}
                       <div className="px-4 py-3.5 border-b border-maasai-beige/30 dark:border-maasai-brown-light">
                         <p className="font-semibold text-maasai-black dark:text-white text-sm truncate">{user.full_name}</p>
-                        <p className="text-xs text-maasai-brown/50 dark:text-maasai-beige/50 capitalize mt-0.5">{user.role}</p>
+                        <p className="text-xs text-maasai-brown/50 dark:text-maasai-beige/50 mt-0.5">{ROLE_LABELS[user.role as UserRole] ?? user.role}</p>
                       </div>
 
                       {/* Menu items */}
