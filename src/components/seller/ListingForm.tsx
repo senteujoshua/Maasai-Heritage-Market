@@ -109,7 +109,10 @@ export function ListingForm({ sellerId, listing, onSuccess }: Props) {
       const ext = file.name.split('.').pop();
       const path = `${sellerId}/${listingId}/${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from('listing-images').upload(path, file, { upsert: true });
-      if (!error) {
+      if (error) {
+        console.error('Storage upload error:', error.message);
+        toast.error('Image upload failed: ' + error.message);
+      } else {
         const { data: urlData } = supabase.storage.from('listing-images').getPublicUrl(path);
         urls.push(urlData.publicUrl);
       }
@@ -182,7 +185,8 @@ export function ListingForm({ sellerId, listing, onSuccess }: Props) {
         is_primary: existingImages.length === 0 && i === primaryIndex - existingImages.length,
       }));
       if (imageRecords.length > 0) {
-        await supabase.from('listing_images').insert(imageRecords);
+        const { error: imgError } = await supabase.from('listing_images').insert(imageRecords);
+        if (imgError) throw new Error('Image save failed: ' + imgError.message);
       }
 
       // Update primary flag on existing images

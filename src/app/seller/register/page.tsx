@@ -24,7 +24,7 @@ export default function BecomeSellerPage() {
 
   useEffect(() => {
     if (!loading && profile) {
-      if (profile.role === 'seller' || profile.role === 'admin') {
+      if (['seller', 'admin', 'ceo', 'manager'].includes(profile.role)) {
         router.replace('/seller/dashboard');
       }
       if (profile.phone) setForm((f) => ({ ...f, phone: profile.phone! }));

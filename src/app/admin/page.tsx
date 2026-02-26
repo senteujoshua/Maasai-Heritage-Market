@@ -119,8 +119,9 @@ export default function AdminDashboardPage() {
   const [rejectTarget, setRejectTarget] = useState<{ id: string; name: string; type: 'listing' | 'verification' } | null>(null);
 
   useEffect(() => {
-    if (!authLoading && (!profile || profile.role !== 'admin')) { router.push('/'); return; }
-    if (profile?.role === 'admin') fetchAdminData();
+    const allowed = ['admin', 'ceo'];
+    if (!authLoading && (!profile || !allowed.includes(profile.role))) { router.push('/'); return; }
+    if (profile && allowed.includes(profile.role)) fetchAdminData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, authLoading]);
 

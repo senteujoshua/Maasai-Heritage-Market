@@ -45,7 +45,8 @@ export default function SellerDashboardPage() {
 
   useEffect(() => {
     if (!authLoading && !profile) { router.push('/login'); return; }
-    if (!authLoading && profile && profile.role !== 'seller' && profile.role !== 'admin') {
+    const sellerAllowed = ['seller', 'admin', 'ceo', 'manager'];
+    if (!authLoading && profile && !sellerAllowed.includes(profile.role)) {
       router.push('/');
       return;
     }

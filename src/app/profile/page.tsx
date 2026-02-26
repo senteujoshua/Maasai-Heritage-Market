@@ -283,7 +283,9 @@ export default function ProfilePage() {
           { href: '/orders', label: 'My Orders' },
           { href: '/wishlist', label: 'Wishlist' },
           ...(profile.role === 'seller' ? [{ href: '/seller/dashboard', label: 'Seller Dashboard' }] : []),
-          ...(profile.role === 'admin'  ? [{ href: '/admin', label: 'Admin Panel' }] : []),
+          ...(['admin', 'ceo'].includes(profile.role)     ? [{ href: '/admin',   label: 'Admin Panel'        }] : []),
+          ...(profile.role === 'manager'                  ? [{ href: '/manager', label: 'Manager Dashboard'   }] : []),
+          ...(profile.role === 'agent'                    ? [{ href: '/agent',   label: 'Agent Portal'        }] : []),
         ].map(({ href, label }) => (
           <Link key={href} href={href}
             className="flex items-center justify-between px-5 py-3.5 hover:bg-maasai-beige/10 dark:hover:bg-maasai-brown-light/30 transition-colors">

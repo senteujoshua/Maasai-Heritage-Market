@@ -170,7 +170,7 @@ export function Navbar() {
                           </Link>
                         ))}
 
-                        {(user.role === 'seller' || user.role === 'admin') && (
+                        {(user.role === 'seller' || user.role === 'admin' || user.role === 'ceo') && (
                           <>
                             <div className="my-1.5 h-px bg-maasai-beige/30 dark:bg-maasai-brown-light mx-4" />
                             <Link href="/seller/dashboard" onClick={() => setUserMenuOpen(false)}
@@ -181,11 +181,27 @@ export function Navbar() {
                           </>
                         )}
 
-                        {user.role === 'admin' && (
+                        {(user.role === 'admin' || user.role === 'ceo') && (
                           <Link href="/admin" onClick={() => setUserMenuOpen(false)}
                             className="flex items-center gap-3 px-4 py-2.5 text-sm text-maasai-brown dark:text-maasai-beige hover:bg-maasai-beige/30 dark:hover:bg-maasai-brown-light/50 transition-colors">
                             <ShieldAlert className="h-4 w-4 text-maasai-brown/60 dark:text-maasai-beige/60" />
                             Admin Panel
+                          </Link>
+                        )}
+
+                        {user.role === 'manager' && (
+                          <Link href="/manager" onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-maasai-brown dark:text-maasai-beige hover:bg-maasai-beige/30 dark:hover:bg-maasai-brown-light/50 transition-colors">
+                            <ShieldAlert className="h-4 w-4 text-maasai-brown/60 dark:text-maasai-beige/60" />
+                            Manager Dashboard
+                          </Link>
+                        )}
+
+                        {user.role === 'agent' && (
+                          <Link href="/agent" onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-maasai-brown dark:text-maasai-beige hover:bg-maasai-beige/30 dark:hover:bg-maasai-brown-light/50 transition-colors">
+                            <LayoutDashboard className="h-4 w-4 text-maasai-brown/60 dark:text-maasai-beige/60" />
+                            Agent Portal
                           </Link>
                         )}
 
