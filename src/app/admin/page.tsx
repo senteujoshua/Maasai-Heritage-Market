@@ -556,21 +556,38 @@ function OrdersTab() {
 /* ─── Users Tab ──────────────────────────────────────────────────────────── */
 function UsersTab() {
   const { profile: currentUserProfile, refetchProfile } = useAuth();
-  const [users, setUsers]       = useState<UserRow[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [query, setQuery]       = useState('');
+  const [users, setUsers]           = useState<UserRow[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [query, setQuery]           = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'buyer' | 'seller' | 'admin' | 'ceo' | 'manager' | 'agent'>('all');
   const [changingRole, setChangingRole] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadUsers = async (quiet = false) => {
+    if (quiet) setRefreshing(true);
     const supabase = createClient();
-    // RPC bypasses RLS so CEO/Manager see all users, not just themselves.
-    supabase.rpc('get_all_users_admin')
-      .then(({ data, error }) => {
-        if (error) toast.error(`Users: ${error.message}`);
-        setUsers((data as unknown as UserRow[]) || []);
-        setLoading(false);
-      });
+    const { data, error } = await supabase.rpc('get_all_users_admin');
+    if (error) toast.error(`Users: ${error.message}`);
+    setUsers((data as unknown as UserRow[]) || []);
+    setLoading(false);
+    setRefreshing(false);
+    setLastUpdated(new Date());
+  };
+
+  useEffect(() => {
+    loadUsers();
+    const supabase = createClient();
+    // Re-fetch the full list whenever any profile row changes (insert / update / delete).
+    // The RPC is SECURITY DEFINER so the re-fetch bypasses RLS correctly.
+    const channel = supabase
+      .channel('admin-users-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        loadUsers(true);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function changeRole(userId: string, newRole: string, town?: string) {
@@ -595,7 +612,8 @@ function UsersTab() {
       if (currentUserProfile?.id === userId) {
         await refetchProfile();
         const supabase = createClient();
-        await supabase.auth.refreshSession();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.auth as any).refreshSession();
       }
     }
     setChangingRole(null);
@@ -621,6 +639,32 @@ function UsersTab() {
 
   return (
     <div className="space-y-4">
+      {/* Header row: live indicator + refresh */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            Live
+          </span>
+          {lastUpdated && (
+            <span className="text-xs text-maasai-brown/40 dark:text-maasai-beige/40">
+              Updated {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => loadUsers(true)}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-maasai-brown dark:text-maasai-beige hover:text-maasai-red transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
+          Refresh
+        </button>
+      </div>
+
       {/* Search + filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -642,8 +686,9 @@ function UsersTab() {
       </div>
 
       <div className="bg-white dark:bg-maasai-brown rounded-2xl border border-maasai-beige/30 dark:border-maasai-brown-light overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-maasai-beige/20 dark:border-maasai-brown-light text-xs text-maasai-brown/50 dark:text-maasai-beige/50">
+        <div className="px-4 py-2.5 border-b border-maasai-beige/20 dark:border-maasai-brown-light text-xs text-maasai-brown/50 dark:text-maasai-beige/50 flex items-center gap-2">
           Showing {filtered.length} of {users.length} users
+          {refreshing && <Loader2 className="h-3 w-3 animate-spin text-maasai-red" />}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
