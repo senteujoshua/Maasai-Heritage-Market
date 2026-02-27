@@ -118,16 +118,40 @@ export default function AdminDashboardPage() {
   const [loading, setLoading]                     = useState(true);
   const [refreshing, setRefreshing]               = useState(false);
   const [fetchError, setFetchError]               = useState<string | null>(null);
+  const [lastSynced, setLastSynced]               = useState<Date | null>(null);
 
   // Reject modal state
   const [rejectTarget, setRejectTarget] = useState<{ id: string; name: string; type: 'listing' | 'verification' } | null>(null);
 
+  // ── Auth guard + initial load ──────────────────────────────────────────
   useEffect(() => {
     const allowed = ['admin', 'ceo'];
     if (!authLoading && (!profile || !allowed.includes(profile.role))) { router.push('/'); return; }
     if (profile && allowed.includes(profile.role)) fetchAdminData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, authLoading]);
+
+  // ── Real-time subscriptions for listings + verifications ───────────────
+  useEffect(() => {
+    if (!profile || !['admin', 'ceo'].includes(profile.role)) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel('admin-main-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'listings' }, () => {
+        fetchAdminData(true);
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, () => {
+        // New user registered — refresh stats so totalUsers stays accurate
+        fetchAdminData(true);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: 'verification_status=eq.pending' }, () => {
+        // A seller submitted for verification
+        fetchAdminData(true);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, profile?.role]);
 
   async function fetchAdminData(silent = false) {
     if (!silent) setLoading(true); else setRefreshing(true);
@@ -177,6 +201,7 @@ export default function AdminDashboardPage() {
 
     setLoading(false);
     setRefreshing(false);
+    setLastSynced(new Date());
   }
 
   /* ── Listing actions ── */
@@ -255,7 +280,21 @@ export default function AdminDashboardPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold font-display text-maasai-black dark:text-white">Admin Panel</h1>
-            <p className="text-xs text-maasai-brown/60 dark:text-maasai-beige/60 mt-0.5">Maasai Heritage Market — Platform Management</p>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <p className="text-xs text-maasai-brown/60 dark:text-maasai-beige/60">Maasai Heritage Market — Platform Management</p>
+              <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                </span>
+                Live
+              </span>
+              {lastSynced && (
+                <span className="text-xs text-maasai-brown/40 dark:text-maasai-beige/40">
+                  · {lastSynced.toLocaleTimeString()}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <button
@@ -348,6 +387,30 @@ export default function AdminDashboardPage() {
       {/* ── PENDING LISTINGS ──────────────────────────────────────────────── */}
       {activeTab === 'listings' && (
         <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                Live
+              </span>
+              {lastSynced && (
+                <span className="text-xs text-maasai-brown/40 dark:text-maasai-beige/40">
+                  Updated {lastSynced.toLocaleTimeString()}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => fetchAdminData(true)}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-maasai-brown dark:text-maasai-beige hover:text-maasai-red transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
+              Refresh
+            </button>
+          </div>
           {pendingListings.length === 0 ? (
             <EmptyState icon={CheckCircle} title="All caught up!" desc="No listings awaiting approval." />
           ) : (
@@ -393,6 +456,30 @@ export default function AdminDashboardPage() {
       {/* ── VERIFICATIONS ─────────────────────────────────────────────────── */}
       {activeTab === 'verifications' && (
         <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                Live
+              </span>
+              {lastSynced && (
+                <span className="text-xs text-maasai-brown/40 dark:text-maasai-beige/40">
+                  Updated {lastSynced.toLocaleTimeString()}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => fetchAdminData(true)}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-maasai-brown dark:text-maasai-beige hover:text-maasai-red transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
+              Refresh
+            </button>
+          </div>
           {pendingVerifications.length === 0 ? (
             <EmptyState icon={CheckCircle} title="No pending verifications" desc="All seller verifications are up to date." />
           ) : (
@@ -679,7 +766,7 @@ function UsersTab() {
           {(['all', 'buyer', 'seller', 'admin', 'ceo', 'manager', 'agent'] as const).map((r) => (
             <button key={r} onClick={() => setRoleFilter(r)}
               className={cn('px-3 py-1.5 text-xs font-semibold rounded-lg capitalize transition-colors', roleFilter === r ? 'bg-white dark:bg-maasai-brown text-maasai-red shadow-sm' : 'text-maasai-brown/60 dark:text-maasai-beige/60 hover:text-maasai-red')}>
-              {r} {r !== 'all' && `(${users.filter(u => u.role === r).length})`}
+              {r === 'all' ? `All (${users.length})` : `${r} (${users.filter(u => u.role === r).length})`}
             </button>
           ))}
         </div>

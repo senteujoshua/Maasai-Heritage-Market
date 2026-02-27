@@ -191,6 +191,8 @@ END;
 $$;
 
 -- ── 5. All users ───────────────────────────────────────────
+-- Uses an EXCEPTION block so the function works even if migration 002
+-- (which adds the `town` column) hasn't been run yet on the live DB.
 CREATE OR REPLACE FUNCTION get_all_users_admin()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -199,34 +201,64 @@ SET search_path = public
 AS $$
 DECLARE
   v_role text;
+  v_result jsonb;
 BEGIN
   SELECT role::text INTO v_role FROM profiles WHERE id = auth.uid();
   IF v_role NOT IN ('ceo', 'admin', 'manager') THEN
     RAISE EXCEPTION 'Unauthorized';
   END IF;
 
-  RETURN COALESCE(
-    (SELECT jsonb_agg(r ORDER BY r.created_at DESC)
-     FROM (
-       SELECT
-         id,
-         full_name,
-         email,
-         role::text                   AS role,
-         is_verified,
-         verification_status::text    AS verification_status,
-         created_at,
-         COALESCE(total_sales, 0)     AS total_sales,
-         COALESCE(rating, 0)          AS rating,
-         shop_name,
-         town
-       FROM profiles
-       ORDER BY created_at DESC
-       LIMIT 500
-     ) r
-    ),
-    '[]'::jsonb
-  );
+  BEGIN
+    -- Primary path: migration 002 has been run, `town` column exists
+    SELECT COALESCE(
+      (SELECT jsonb_agg(r ORDER BY r.created_at DESC)
+       FROM (
+         SELECT
+           id,
+           full_name,
+           email,
+           role::text                   AS role,
+           is_verified,
+           verification_status::text    AS verification_status,
+           created_at,
+           COALESCE(total_sales, 0)     AS total_sales,
+           COALESCE(rating, 0)          AS rating,
+           shop_name,
+           town
+         FROM profiles
+         ORDER BY created_at DESC
+         LIMIT 500
+       ) r
+      ),
+      '[]'::jsonb
+    ) INTO v_result;
+  EXCEPTION WHEN undefined_column THEN
+    -- Fallback: migration 002 not yet applied, `town` not in profiles
+    SELECT COALESCE(
+      (SELECT jsonb_agg(r ORDER BY r.created_at DESC)
+       FROM (
+         SELECT
+           id,
+           full_name,
+           email,
+           role::text                   AS role,
+           is_verified,
+           verification_status::text    AS verification_status,
+           created_at,
+           COALESCE(total_sales, 0)     AS total_sales,
+           COALESCE(rating, 0)          AS rating,
+           shop_name,
+           NULL::text                   AS town
+         FROM profiles
+         ORDER BY created_at DESC
+         LIMIT 500
+       ) r
+      ),
+      '[]'::jsonb
+    ) INTO v_result;
+  END;
+
+  RETURN v_result;
 END;
 $$;
 
