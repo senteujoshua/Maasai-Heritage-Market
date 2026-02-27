@@ -555,6 +555,7 @@ function OrdersTab() {
 
 /* ─── Users Tab ──────────────────────────────────────────────────────────── */
 function UsersTab() {
+  const { profile: currentUserProfile, refetchProfile } = useAuth();
   const [users, setUsers]       = useState<UserRow[]>([]);
   const [loading, setLoading]   = useState(true);
   const [query, setQuery]       = useState('');
@@ -575,9 +576,6 @@ function UsersTab() {
   async function changeRole(userId: string, newRole: string, town?: string) {
     setChangingRole(userId);
     const supabase = createClient();
-    // Use SECURITY DEFINER RPC — direct .update() silently fails when
-    // RLS blocks it (returns error:null but 0 rows updated), so the
-    // optimistic UI update showed the new role but the DB never changed.
     const { data, error } = await supabase.rpc('update_user_role', {
       p_target_user_id: userId,
       p_new_role:       newRole,
@@ -590,6 +588,15 @@ function UsersTab() {
         u.id === userId ? { ...u, role: newRole } : u
       ));
       toast.success(`Role updated to ${ROLE_LABELS[newRole as UserRole] ?? newRole}`);
+      // If admin changed their OWN role, refresh both useAuth state AND
+      // the Supabase session token. refreshSession() fires onAuthStateChange
+      // in every listener (Navbar, useAuth) so they all re-fetch the profile
+      // from DB — no page reload needed, no logout risk.
+      if (currentUserProfile?.id === userId) {
+        await refetchProfile();
+        const supabase = createClient();
+        await supabase.auth.refreshSession();
+      }
     }
     setChangingRole(null);
   }
