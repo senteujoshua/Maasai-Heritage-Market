@@ -84,10 +84,29 @@ export function ListingForm({ sellerId, listing, onSuccess }: Props) {
     const totalImages = images.length + existingImages.length;
     const allowed = Math.min(files.length, 8 - totalImages);
     if (allowed <= 0) { toast.error('Maximum 8 images allowed'); return; }
-    const newFiles = files.slice(0, allowed);
-    const newPreviews = newFiles.map((f) => URL.createObjectURL(f));
-    setImages((prev) => [...prev, ...newFiles]);
+
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+    const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+    const valid: File[] = [];
+    for (const file of files.slice(0, allowed)) {
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        toast.error(`${file.name}: only JPEG, PNG, and WebP are allowed`);
+        continue;
+      }
+      if (file.size > MAX_SIZE_BYTES) {
+        toast.error(`${file.name}: exceeds the 5 MB limit`);
+        continue;
+      }
+      valid.push(file);
+    }
+
+    if (valid.length === 0) return;
+    const newPreviews = valid.map((f) => URL.createObjectURL(f));
+    setImages((prev) => [...prev, ...valid]);
     setImagePreviews((prev) => [...prev, ...newPreviews]);
+    // Reset input so the same file can be re-selected after removal
+    e.target.value = '';
   }
 
   function removeNewImage(index: number) {
@@ -248,7 +267,7 @@ export function ListingForm({ sellerId, listing, onSuccess }: Props) {
             <label className="aspect-square rounded-xl border-2 border-dashed border-maasai-beige dark:border-maasai-brown-light hover:border-maasai-red cursor-pointer flex flex-col items-center justify-center gap-1 text-maasai-brown/50 hover:text-maasai-red transition-colors">
               <Plus className="h-7 w-7" />
               <span className="text-xs font-medium">Add Photo</span>
-              <input type="file" accept="image/*" multiple className="sr-only" onChange={handleImageSelect} />
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" onChange={handleImageSelect} />
             </label>
           )}
         </div>
