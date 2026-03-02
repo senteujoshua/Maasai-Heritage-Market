@@ -86,34 +86,34 @@ function MarketplaceContent() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold font-display text-maasai-black dark:text-white">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-5 sm:py-8 pb-24 lg:pb-8">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-lg sm:text-2xl font-bold font-display text-maasai-black dark:text-white leading-tight">
           {filters.query ? `Results for "${filters.query}"` : filters.category ? filters.category.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'All Items'}
         </h1>
-        <p className="text-maasai-brown/60 dark:text-maasai-beige/60 mt-1 text-sm">
+        <p className="text-maasai-brown/60 dark:text-maasai-beige/60 mt-0.5 text-xs sm:text-sm">
           {loading ? 'Loading...' : `${total.toLocaleString()} item${total !== 1 ? 's' : ''} found`}
         </p>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex gap-5">
         <div className="hidden lg:block w-60 flex-shrink-0">
           <CategoryFilter filters={filters} onChange={handleFiltersChange} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-3 mb-5">
-            <div className="flex items-center gap-2">
-              <SortAsc className="h-4 w-4 text-maasai-brown/60 flex-shrink-0" />
+          <div className="flex items-center justify-between gap-2 mb-4 sm:mb-5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <SortAsc className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-maasai-brown/60 flex-shrink-0" />
               <select value={filters.sort_by} onChange={(e) => setFilters((prev) => ({ ...prev, sort_by: e.target.value as SearchFilters['sort_by'] }))}
-                className="text-sm border border-maasai-beige dark:border-maasai-brown-light rounded-lg px-3 py-1.5 bg-white dark:bg-maasai-brown text-maasai-black dark:text-white focus:outline-none focus:ring-2 focus:ring-maasai-red">
+                className="text-xs sm:text-sm border border-maasai-beige dark:border-maasai-brown-light rounded-lg px-2 sm:px-3 py-1.5 bg-white dark:bg-maasai-brown text-maasai-black dark:text-white focus:outline-none focus:ring-2 focus:ring-maasai-red min-w-0 max-w-[160px] sm:max-w-none truncate">
                 {SORT_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
               </select>
             </div>
-            <div className="flex items-center gap-1 border border-maasai-beige dark:border-maasai-brown-light rounded-lg p-0.5">
+            <div className="flex items-center gap-0.5 border border-maasai-beige dark:border-maasai-brown-light rounded-lg p-0.5 flex-shrink-0">
               {(['grid', 'list'] as const).map((v) => (
                 <button key={v} onClick={() => setView(v)}
                   className={cn('p-1.5 rounded-md transition-colors', view === v ? 'bg-maasai-red text-white' : 'text-maasai-brown/60 hover:bg-maasai-beige/30')}>
-                  {v === 'grid' ? <Grid3X3 className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                  {v === 'grid' ? <Grid3X3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <List className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
                 </button>
               ))}
             </div>
@@ -122,27 +122,27 @@ function MarketplaceContent() {
           {loading ? (
             <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-maasai-red" /></div>
           ) : listings.length === 0 ? (
-            <div className="text-center py-20">
-              <Package className="h-16 w-16 mx-auto text-maasai-beige mb-4" />
-              <h3 className="font-bold text-lg text-maasai-black dark:text-white mb-2">No items found</h3>
+            <div className="text-center py-16 sm:py-20">
+              <Package className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-maasai-beige mb-4" />
+              <h3 className="font-bold text-base sm:text-lg text-maasai-black dark:text-white mb-2">No items found</h3>
               <p className="text-maasai-brown/60 dark:text-maasai-beige/60 text-sm">Try adjusting your filters or search term</p>
             </div>
           ) : (
-            <div className={cn('grid gap-4', view === 'grid' ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1')}>
+            <div className={cn('grid gap-2.5 sm:gap-4', view === 'grid' ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1')}>
               {listings.map((listing) => <ProductCard key={listing.id} listing={listing} userId={profile?.id} onAddToCart={addToCart} />)}
             </div>
           )}
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-8">
+            <div className="flex items-center justify-center gap-2 mt-6 sm:mt-8">
               <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                className="px-4 py-2 text-sm font-medium border border-maasai-beige dark:border-maasai-brown-light rounded-lg disabled:opacity-50 hover:bg-maasai-beige/30 text-maasai-brown dark:text-maasai-beige">
-                Previous
+                className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border border-maasai-beige dark:border-maasai-brown-light rounded-lg disabled:opacity-50 hover:bg-maasai-beige/30 text-maasai-brown dark:text-maasai-beige">
+                ‹ Prev
               </button>
-              <span className="text-sm text-maasai-brown/70 dark:text-maasai-beige/70">Page {page} of {totalPages}</span>
+              <span className="text-xs sm:text-sm text-maasai-brown/70 dark:text-maasai-beige/70 whitespace-nowrap">{page} / {totalPages}</span>
               <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                className="px-4 py-2 text-sm font-medium border border-maasai-beige dark:border-maasai-brown-light rounded-lg disabled:opacity-50 hover:bg-maasai-beige/30 text-maasai-brown dark:text-maasai-beige">
-                Next
+                className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border border-maasai-beige dark:border-maasai-brown-light rounded-lg disabled:opacity-50 hover:bg-maasai-beige/30 text-maasai-brown dark:text-maasai-beige">
+                Next ›
               </button>
             </div>
           )}

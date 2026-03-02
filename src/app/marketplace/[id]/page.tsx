@@ -33,11 +33,10 @@ export default function ProductDetailPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [addingToCart, setAddingToCart] = useState(false);
 
-  const { currentBid, bidCount, placeBid, biddingLoading } = useAuction(
-    listing?.listing_type === 'auction' ? id : null,
-    listing?.current_bid || listing?.price || 0,
-    listing?.bid_count || 0
-  );
+  const { bids, bidding, placeBid } = useAuction(id);
+  const currentBid = bids[0]?.amount ?? (listing?.current_bid ?? listing?.price ?? 0);
+  const bidCount = listing?.bid_count ?? bids.length;
+  const biddingLoading = bidding;
 
   const fetchListing = useCallback(async () => {
     const supabase = createClient();
@@ -103,7 +102,7 @@ export default function ProductDetailPage() {
   const images = listing?.images || [];
   const sortedImages = [...images].sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
   const isAuction = listing?.listing_type === 'auction';
-  const isOwner = profile?.id === (listing?.seller as Record<string, unknown>)?.id;
+  const isOwner = profile?.id === (listing?.seller as unknown as Record<string, unknown>)?.id;
   const isSold = listing?.status === 'sold';
 
   if (loading) {
@@ -124,8 +123,8 @@ export default function ProductDetailPage() {
     );
   }
 
-  const seller = listing.seller as Record<string, unknown>;
-  const category = listing.category as Record<string, unknown>;
+  const seller = listing.seller as unknown as Record<string, unknown>;
+  const category = listing.category as unknown as Record<string, unknown>;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
@@ -203,7 +202,7 @@ export default function ProductDetailPage() {
 
             {/* Seller */}
             <div className="flex items-center gap-2 mb-3">
-              {seller?.is_verified && <VerifiedArtisanBadge />}
+              {!!seller?.is_verified && <VerifiedArtisanBadge />}
               <span className="text-sm text-maasai-brown/70 dark:text-maasai-beige/70">
                 by <Link href={`/seller/${seller?.id}`} className="text-maasai-red font-semibold hover:underline">{(seller?.shop_name || seller?.full_name) as string}</Link>
               </span>
@@ -218,16 +217,21 @@ export default function ProductDetailPage() {
           {/* PRICING */}
           {isAuction ? (
             <div className="bg-maasai-red/5 dark:bg-maasai-red/10 rounded-2xl p-5 border border-maasai-red/20">
-              <AuctionTimerCard listing={{ ...listing, current_bid: currentBid, bid_count: bidCount }} />
+              <AuctionTimerCard
+                endTime={listing.auction_end_time || ''}
+                currentBid={currentBid}
+                startingBid={listing.starting_bid}
+                bidCount={bidCount}
+              />
               {!isOwner && !isSold && (
                 <div className="mt-4">
                   <BidForm
                     listingId={id}
                     currentBid={currentBid}
-                    minBid={currentBid + 100}
-                    onBid={placeBid}
-                    loading={biddingLoading}
-                    userId={profile?.id}
+                    startingBid={listing.starting_bid}
+                    onBid={(amount) => placeBid(amount, profile?.id || '')}
+                    isExpired={!listing.auction_end_time || new Date(listing.auction_end_time) < new Date()}
+                    userId={profile?.id ?? null}
                   />
                 </div>
               )}
@@ -235,10 +239,10 @@ export default function ProductDetailPage() {
           ) : (
             <div>
               <div className="flex items-baseline gap-3 mb-4">
-                <span className="text-3xl font-bold text-maasai-red">{formatKES(listing.price)}</span>
-                {listing.price > 5000 && (
+                <span className="text-3xl font-bold text-maasai-red">{formatKES(listing.price ?? 0)}</span>
+                {(listing.price ?? 0) > 5000 && (
                   <span className="text-sm text-maasai-brown/50 dark:text-maasai-beige/50">
-                    or ~{formatKES(Math.ceil(listing.price / 3))}/mo (3 installments)
+                    or ~{formatKES(Math.ceil((listing.price ?? 0) / 3))}/mo (3 installments)
                   </span>
                 )}
               </div>
@@ -321,7 +325,7 @@ export default function ProductDetailPage() {
           ) : (
             <div className="space-y-4">
               {reviews.map((review) => {
-                const reviewer = review.reviewer as Record<string, unknown>;
+                const reviewer = review.reviewer as unknown as Record<string, unknown>;
                 return (
                   <div key={review.id} className="p-4 bg-white dark:bg-maasai-brown rounded-xl border border-maasai-beige/30 dark:border-maasai-brown-light">
                     <div className="flex items-center gap-3 mb-2">
@@ -355,7 +359,7 @@ export default function ProductDetailPage() {
               </div>
               <div>
                 <p className="font-bold text-maasai-black dark:text-white">{(seller?.shop_name || seller?.full_name) as string}</p>
-                {seller?.is_verified && <VerifiedArtisanBadge />}
+                {!!seller?.is_verified && <VerifiedArtisanBadge />}
               </div>
             </div>
             <div className="space-y-2 text-sm text-maasai-brown/70 dark:text-maasai-beige/70 mb-4">

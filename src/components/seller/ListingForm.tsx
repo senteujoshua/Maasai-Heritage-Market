@@ -61,7 +61,7 @@ export function ListingForm({ sellerId, listing, onSuccess }: Props) {
       listing_type: listing?.listing_type || 'fixed',
       auction_duration: 12,
       starting_bid: listing?.starting_bid || 0,
-      category_id: (listing?.category as Record<string, unknown>)?.id as string || '',
+      category_id: (listing?.category as unknown as Record<string, unknown>)?.id as string || '',
       condition: (listing?.condition as 'new' | 'like_new' | 'good' | 'fair') || 'new',
       region: listing?.region as KenyanRegion,
       quantity: listing?.quantity || 1,

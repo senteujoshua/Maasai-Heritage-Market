@@ -2,7 +2,7 @@ export type UserRole = 'buyer' | 'seller' | 'admin' | 'ceo' | 'manager' | 'agent
 export type VerificationStatus = 'not_submitted' | 'pending' | 'approved' | 'rejected';
 export type ListingType = 'fixed' | 'auction';
 export type ListingStatus = 'draft' | 'pending_approval' | 'active' | 'sold' | 'ended' | 'rejected';
-export type PaymentMethod = 'mpesa' | 'card' | 'cod';
+export type PaymentMethod = 'mpesa' | 'card' | 'stripe' | 'paypal' | 'cod';
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
@@ -68,6 +68,9 @@ export interface Listing {
   status: ListingStatus;
   region: string;
   stock_quantity: number;
+  quantity: number;               // alias used in listing form / product detail
+  condition: string | null;       // 'new' | 'like_new' | 'good' | 'fair'
+  tags: string[] | null;
   shipping_details: string | null;
   estimated_shipping_days: number | null;
   is_approved: boolean;

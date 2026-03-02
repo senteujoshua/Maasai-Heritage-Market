@@ -60,7 +60,7 @@ export default function CartPage() {
         {/* ITEMS */}
         <div className="lg:col-span-2 space-y-3">
           {items.map((item: CartItem) => {
-            const listing = item.listing as Record<string, unknown>;
+            const listing = item.listing as unknown as Record<string, unknown>;
             const images = (listing?.images as Array<{image_url: string; is_primary: boolean}>) || [];
             const primaryImage = images.find((i) => i.is_primary)?.image_url || images[0]?.image_url;
             const price = listing?.price as number || 0;

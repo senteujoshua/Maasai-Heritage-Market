@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const result = await initiateSTKPush({
       phone,
       amount: Math.ceil(amount),
-      orderId,
+      accountRef: orderId,
       description: description || `Order ${orderId}`,
     });
 

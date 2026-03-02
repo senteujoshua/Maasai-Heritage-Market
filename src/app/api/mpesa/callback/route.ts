@@ -21,15 +21,31 @@ export async function POST(req: NextRequest) {
         meta[item.Name] = item.Value;
       });
 
+      // Idempotency: check if order is already completed
+      const { data: existingOrder } = await supabase
+        .from('orders')
+        .select('id, payment_status, buyer:profiles(full_name, phone)')
+        .eq('mpesa_checkout_request_id', CheckoutRequestID)
+        .single();
+
+      if (!existingOrder) {
+        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+      }
+
+      if (existingOrder.payment_status === 'completed') {
+        // Already processed — return success without re-processing
+        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+      }
+
       const { data: order } = await supabase
         .from('orders')
         .update({
           payment_status: 'completed',
           status: 'confirmed',
-          mpesa_receipt_number: meta.MpesaReceiptNumber,
+          mpesa_receipt_number: meta.MpesaReceiptNumber as string,
           paid_at: new Date().toISOString(),
         })
-        .eq('mpesa_checkout_request_id', CheckoutRequestID)
+        .eq('id', existingOrder.id)
         .select('*, buyer:profiles(full_name, phone)')
         .single();
 
@@ -51,7 +67,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
   } catch (error) {
     console.error('M-Pesa callback error:', error);
-    // Always return 200 to Safaricom
+    // Always return 200 to Safaricom to prevent retries
     return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
   }
 }

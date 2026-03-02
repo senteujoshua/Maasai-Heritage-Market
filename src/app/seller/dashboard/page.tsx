@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
-import type { Listing } from '@/types';
+import type { Listing, Profile } from '@/types';
 
 interface Stats {
   totalListings: number;
@@ -331,7 +331,7 @@ export default function SellerDashboardPage() {
   );
 }
 
-function VerificationTab({ profile, onUpdate }: { profile: Record<string, unknown>; onUpdate: () => void }) {
+function VerificationTab({ profile, onUpdate }: { profile: Profile; onUpdate: () => void }) {
   const [nationalId, setNationalId] = useState<File | null>(null);
   const [kraPin, setKraPin] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);

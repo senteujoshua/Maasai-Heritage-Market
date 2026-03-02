@@ -38,6 +38,13 @@ export function useCart(userId?: string) {
     if (!error) { setItems((prev) => prev.filter((i) => i.id !== itemId)); toast.success('Removed from cart'); }
   }
 
+  async function updateQuantity(itemId: string, quantity: number) {
+    const { error } = await supabase.from('cart_items').update({ quantity }).eq('id', itemId);
+    if (!error) {
+      setItems((prev) => prev.map((i) => i.id === itemId ? { ...i, quantity } : i));
+    }
+  }
+
   async function clearCart() {
     if (!userId) return;
     await supabase.from('cart_items').delete().eq('user_id', userId);
@@ -46,5 +53,5 @@ export function useCart(userId?: string) {
 
   const total = items.reduce((sum, item) => sum + (item.listing?.price || 0) * item.quantity, 0);
 
-  return { items, loading, total, addToCart, removeFromCart, clearCart, refetch: fetchCart };
+  return { items, loading, total, addToCart, removeFromCart, updateQuantity, clearCart, refetch: fetchCart };
 }

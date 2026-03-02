@@ -69,44 +69,44 @@ export function ProductCard({ listing, userId, onAddToCart, className }: Product
           </div>
         </div>
 
-        <div className="p-3 space-y-2">
-          <h3 className="font-semibold text-maasai-black dark:text-white text-sm leading-tight line-clamp-2">
+        <div className="p-2.5 sm:p-3 space-y-1.5 sm:space-y-2">
+          <h3 className="font-semibold text-maasai-black dark:text-white text-xs sm:text-sm leading-tight line-clamp-2">
             {truncate(listing.title, 50)}
           </h3>
           {listing.seller && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-maasai-brown/60 dark:text-maasai-beige/60 truncate">
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] sm:text-xs text-maasai-brown/60 dark:text-maasai-beige/60 truncate">
                 {listing.seller.shop_name || listing.seller.full_name}
               </span>
               {listing.seller.is_verified && (
-                <ShieldCheck className="h-3.5 w-3.5 text-maasai-red flex-shrink-0" />
+                <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-maasai-red flex-shrink-0" />
               )}
             </div>
           )}
-          <div className="flex items-center gap-1 text-xs text-maasai-brown/50 dark:text-maasai-beige/50">
+          <div className="hidden sm:flex items-center gap-1 text-xs text-maasai-brown/50 dark:text-maasai-beige/50">
             <MapPin className="h-3 w-3" />{listing.region}
           </div>
-          <div className="flex items-center justify-between pt-1">
-            <div>
+          <div className="flex items-center justify-between pt-0.5 sm:pt-1">
+            <div className="min-w-0 flex-1 mr-1">
               {isAuction ? (
                 <div>
-                  <p className="text-xs text-maasai-brown/60 dark:text-maasai-beige/60">{listing.current_bid ? 'Current Bid' : 'Starting Bid'}</p>
-                  <p className="font-bold text-maasai-terracotta text-base">{formatKES(listing.current_bid || listing.starting_bid || 0)}</p>
-                  <p className="text-xs text-maasai-brown/60 dark:text-maasai-beige/60">{listing.bid_count} bid{listing.bid_count !== 1 ? 's' : ''}</p>
+                  <p className="text-[10px] sm:text-xs text-maasai-brown/60 dark:text-maasai-beige/60">{listing.current_bid ? 'Current' : 'Start'}</p>
+                  <p className="font-bold text-maasai-terracotta text-xs sm:text-base truncate">{formatKES(listing.current_bid || listing.starting_bid || 0)}</p>
+                  <p className="text-[10px] sm:text-xs text-maasai-brown/60 dark:text-maasai-beige/60">{listing.bid_count} bid{listing.bid_count !== 1 ? 's' : ''}</p>
                 </div>
               ) : (
-                <p className="font-bold text-maasai-black dark:text-white text-base">{formatKES(listing.price || 0)}</p>
+                <p className="font-bold text-maasai-black dark:text-white text-xs sm:text-base truncate">{formatKES(listing.price || 0)}</p>
               )}
             </div>
             {!isSold && !isAuction && onAddToCart && (
               <button onClick={(e) => { e.preventDefault(); onAddToCart(listing.id); }}
-                className="p-2 rounded-lg bg-maasai-red/10 hover:bg-maasai-red text-maasai-red hover:text-white transition-colors" title="Add to cart">
-                <ShoppingCart className="h-4 w-4" />
+                className="p-1.5 sm:p-2 rounded-lg bg-maasai-red/10 hover:bg-maasai-red text-maasai-red hover:text-white transition-colors flex-shrink-0" title="Add to cart">
+                <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
             )}
             {isAuction && isActive && (
-              <span className="flex items-center gap-1 text-xs font-semibold text-maasai-terracotta">
-                <TrendingUp className="h-3.5 w-3.5" />Bid
+              <span className="flex items-center gap-0.5 text-[10px] sm:text-xs font-semibold text-maasai-terracotta flex-shrink-0">
+                <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5" />Bid
               </span>
             )}
           </div>
