@@ -20,79 +20,60 @@ export async function POST(req: NextRequest) {
 
     const adminSupabase = await createAdminClient();
 
-    // Get listing
-    const { data: listing, error: listingError } = await adminSupabase
-      .from('listings')
-      .select('*, seller:profiles(id, phone, full_name)')
-      .eq('id', listingId)
-      .eq('listing_type', 'auction')
-      .eq('status', 'active')
-      .eq('is_approved', true)
-      .single();
+    // Atomic bid placement via row-locked RPC (prevents race conditions)
+    const { data: result, error: rpcError } = await adminSupabase
+      .rpc('place_bid', {
+        p_listing_id: listingId,
+        p_bidder_id:  user.id,
+        p_amount:     amount,
+      });
 
-    if (listingError || !listing) {
-      return apiError('Listing not found or auction has ended', 404);
+    if (rpcError) {
+      const msg = rpcError.message ?? '';
+      if (msg.includes('listing_not_found'))      return apiError('Listing not found', 404);
+      if (msg.includes('not_an_auction'))          return apiError('Not an auction listing', 400);
+      if (msg.includes('auction_not_active'))      return apiError('Auction is not active', 400);
+      if (msg.includes('auction_ended'))           return apiError('This auction has ended', 400);
+      if (msg.includes('cannot_bid_own_listing'))  return apiError('You cannot bid on your own listing', 400);
+      if (msg.includes('bid_too_low')) {
+        const min = msg.split(':')[1]?.trim() ?? '0';
+        return apiError(`Minimum bid is ${min} KES`, 400);
+      }
+      throw rpcError;
     }
 
-    const seller = listing.seller as Record<string, unknown>;
-
-    if (listing.auction_end_time && new Date(listing.auction_end_time) <= new Date()) {
-      return apiError('This auction has ended', 400);
-    }
-
-    if (user.id === seller?.id) {
-      return apiError('You cannot bid on your own listing', 400);
-    }
-
-    const currentBid = listing.current_bid || listing.price || 0;
-    const minBid = currentBid + 100;
-
-    if (amount < minBid) {
-      return apiError(`Minimum bid is ${minBid} KES`, 400);
-    }
-
-    // Get previous highest bidder for outbid notification
-    const { data: prevBid } = await adminSupabase
-      .from('bids')
-      .select('*, bidder:profiles(phone, full_name)')
-      .eq('listing_id', listingId)
-      .eq('is_winning', true)
-      .single();
-
-    // Insert bid
-    const { data: newBid, error: bidError } = await adminSupabase
-      .from('bids')
-      .insert({ listing_id: listingId, bidder_id: user.id, amount, is_winning: true })
-      .select()
-      .single();
-
-    if (bidError) throw bidError;
-
-    // Update previous winning bid
-    if (prevBid?.id) {
-      await adminSupabase.from('bids').update({ is_winning: false }).eq('id', prevBid.id);
-    }
-
-    // Update listing current_bid and bid_count
-    await adminSupabase.from('listings').update({
-      current_bid: amount,
-      bid_count: (listing.bid_count || 0) + 1,
-    }).eq('id', listingId);
+    const { bid_id, new_current_bid, bid_count } = result as {
+      bid_id: string; new_current_bid: number; bid_count: number;
+    };
 
     // Audit
     auditLog({ actorId: user.id, action: 'bid_placed', entityType: 'listing', entityId: listingId,
-      payload: { amount, previous_bid: currentBid } });
+      payload: { amount, new_current_bid, bid_count } });
 
-    // Outbid SMS
+    // Notify previous highest bidder (best-effort, non-blocking)
+    const { data: prevBid } = await adminSupabase
+      .from('bids')
+      .select('bidder_id, bidder:profiles(phone)')
+      .eq('listing_id', listingId)
+      .eq('is_winning', false)
+      .order('amount', { ascending: false })
+      .limit(1)
+      .single();
+
     if (prevBid) {
-      const prevBidder = prevBid.bidder as Record<string, unknown>;
-      if (prevBidder?.phone && prevBidder?.id !== user.id) {
-        const message = SMS_TEMPLATES.outbid(listing.title, amount, listingId);
-        sendSMS({ to: prevBidder.phone as string, message }).catch(console.error);
+      const prevBidder = prevBid.bidder as unknown as Record<string, unknown>;
+      const phone = prevBidder?.phone as string | undefined;
+      if (phone && prevBid.bidder_id !== user.id) {
+        const { data: listing } = await adminSupabase
+          .from('listings').select('title').eq('id', listingId).single();
+        if (listing) {
+          sendSMS({ to: phone, message: SMS_TEMPLATES.outbid(listing.title, new_current_bid, listingId) })
+            .catch(console.error);
+        }
       }
     }
 
-    return apiOk({ bid: newBid, newCurrentBid: amount });
+    return apiOk({ bid_id, newCurrentBid: new_current_bid, bidCount: bid_count });
   } catch (error: unknown) {
     Sentry.captureException(error);
     const message = error instanceof Error ? error.message : 'Failed to place bid';
