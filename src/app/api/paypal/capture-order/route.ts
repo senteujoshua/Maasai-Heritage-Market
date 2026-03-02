@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/server';
-import { apiError } from '@/lib/api-response';
+import { NextRequest } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { apiOk, apiError } from '@/lib/api-response';
+import { auditLog } from '@/lib/audit';
 
 const PAYPAL_BASE = process.env.PAYPAL_ENV === 'live'
   ? 'https://api-m.paypal.com'
@@ -38,7 +39,6 @@ export async function POST(req: NextRequest) {
       return apiError('Missing paypalOrderId or internalOrderId', 400);
     }
 
-    // Verify order belongs to authenticated user
     const { data: order } = await supabase
       .from('orders')
       .select('id, buyer_id, payment_status')
@@ -47,11 +47,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!order) return apiError('Order not found or access denied', 403);
-
-    // Idempotency: skip if already completed
-    if (order.payment_status === 'completed') {
-      return NextResponse.json({ success: true });
-    }
+    if (order.payment_status === 'paid') return apiOk({ alreadyPaid: true });
 
     const token = await getAccessToken();
 
@@ -68,16 +64,20 @@ export async function POST(req: NextRequest) {
     if (data.status === 'COMPLETED') {
       const adminSupabase = await createAdminClient();
       await adminSupabase.from('orders').update({
-        payment_status: 'completed',
+        payment_status: 'paid',
         status: 'confirmed',
         paid_at: new Date().toISOString(),
       }).eq('id', internalOrderId);
 
-      return NextResponse.json({ success: true });
+      auditLog({ actorId: user.id, action: 'payment_completed', entityType: 'order',
+        entityId: internalOrderId, payload: { method: 'paypal', paypal_order_id: paypalOrderId } });
+
+      return apiOk({ captured: true });
     }
 
     return apiError('Payment not completed', 400);
   } catch (error) {
+    Sentry.captureException(error);
     const message = error instanceof Error ? error.message : 'PayPal capture error';
     return apiError(message, 500);
   }

@@ -1,26 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/server';
-import { createClient } from '@/lib/supabase/server';
+import { NextRequest } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { sendSMS, SMS_TEMPLATES } from '@/lib/africastalking/sms';
+import { apiOk, apiError } from '@/lib/api-response';
+import { auditLog } from '@/lib/audit';
 
 export async function POST(req: NextRequest) {
   try {
     const { listingId, amount } = await req.json();
 
     if (!listingId || !amount || amount <= 0) {
-      return NextResponse.json({ error: 'Invalid bid parameters' }, { status: 400 });
+      return apiError('Invalid bid parameters', 400);
     }
 
     // Authenticate user
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (authError || !user) return apiError('Unauthorized', 401);
 
     const adminSupabase = await createAdminClient();
 
-    // Get listing with lock
+    // Get listing
     const { data: listing, error: listingError } = await adminSupabase
       .from('listings')
       .select('*, seller:profiles(id, phone, full_name)')
@@ -31,26 +31,24 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (listingError || !listing) {
-      return NextResponse.json({ error: 'Listing not found or auction has ended' }, { status: 404 });
+      return apiError('Listing not found or auction has ended', 404);
     }
 
     const seller = listing.seller as Record<string, unknown>;
 
-    // Check auction hasn't ended
     if (listing.auction_end_time && new Date(listing.auction_end_time) <= new Date()) {
-      return NextResponse.json({ error: 'This auction has ended' }, { status: 400 });
+      return apiError('This auction has ended', 400);
     }
 
-    // Check bidder is not the seller
     if (user.id === seller?.id) {
-      return NextResponse.json({ error: 'You cannot bid on your own listing' }, { status: 400 });
+      return apiError('You cannot bid on your own listing', 400);
     }
 
     const currentBid = listing.current_bid || listing.price || 0;
     const minBid = currentBid + 100;
 
     if (amount < minBid) {
-      return NextResponse.json({ error: `Minimum bid is ${minBid} KES` }, { status: 400 });
+      return apiError(`Minimum bid is ${minBid} KES`, 400);
     }
 
     // Get previous highest bidder for outbid notification
@@ -64,12 +62,7 @@ export async function POST(req: NextRequest) {
     // Insert bid
     const { data: newBid, error: bidError } = await adminSupabase
       .from('bids')
-      .insert({
-        listing_id: listingId,
-        bidder_id: user.id,
-        amount,
-        is_winning: true,
-      })
+      .insert({ listing_id: listingId, bidder_id: user.id, amount, is_winning: true })
       .select()
       .single();
 
@@ -86,7 +79,11 @@ export async function POST(req: NextRequest) {
       bid_count: (listing.bid_count || 0) + 1,
     }).eq('id', listingId);
 
-    // Send outbid SMS to previous highest bidder
+    // Audit
+    auditLog({ actorId: user.id, action: 'bid_placed', entityType: 'listing', entityId: listingId,
+      payload: { amount, previous_bid: currentBid } });
+
+    // Outbid SMS
     if (prevBid) {
       const prevBidder = prevBid.bidder as Record<string, unknown>;
       if (prevBidder?.phone && prevBidder?.id !== user.id) {
@@ -95,14 +92,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      bid: newBid,
-      newCurrentBid: amount,
-    });
+    return apiOk({ bid: newBid, newCurrentBid: amount });
   } catch (error: unknown) {
-    console.error('Bid error:', error);
+    Sentry.captureException(error);
     const message = error instanceof Error ? error.message : 'Failed to place bid';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }

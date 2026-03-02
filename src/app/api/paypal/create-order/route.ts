@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { createClient } from '@/lib/supabase/server';
-import { apiError } from '@/lib/api-response';
+import { apiOk, apiError } from '@/lib/api-response';
 
 const PAYPAL_BASE = process.env.PAYPAL_ENV === 'live'
   ? 'https://api-m.paypal.com'
@@ -33,11 +34,8 @@ export async function POST(req: NextRequest) {
 
     const { amount, orderId } = await req.json();
 
-    if (!amount || !orderId) {
-      return apiError('Missing amount or orderId', 400);
-    }
+    if (!amount || !orderId) return apiError('Missing amount or orderId', 400);
 
-    // Verify this order belongs to the authenticated user
     const { data: order } = await supabase
       .from('orders')
       .select('id, buyer_id')
@@ -69,12 +67,11 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await res.json();
-    if (!res.ok) {
-      return apiError(data.message || 'PayPal order creation failed', 500);
-    }
+    if (!res.ok) return apiError(data.message || 'PayPal order creation failed', 500);
 
-    return NextResponse.json({ id: data.id });
+    return apiOk({ id: data.id });
   } catch (error) {
+    Sentry.captureException(error);
     const message = error instanceof Error ? error.message : 'PayPal error';
     return apiError(message, 500);
   }
