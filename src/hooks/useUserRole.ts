@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types';
 
@@ -12,78 +13,44 @@ export function useUserRole() {
 
   const role: UserRole | null = profile?.role ?? null;
 
-  // ── Specific role checks ──────────────────────────────────
-  const isCEO     = role === 'ceo' || role === 'admin'; // 'admin' kept for backwards-compat
-  const isManager = role === 'manager';
-  const isAgent   = role === 'agent';
-  const isSeller  = role === 'seller';
-  const isBuyer   = role === 'buyer';
+  return useMemo(() => {
+    // ── Specific role checks ────────────────────────────────
+    const isCEO     = role === 'ceo' || role === 'admin'; // 'admin' kept for backwards-compat
+    const isManager = role === 'manager';
+    const isAgent   = role === 'agent';
+    const isSeller  = role === 'seller';
+    const isBuyer   = role === 'buyer';
 
-  // ── Composite checks ─────────────────────────────────────
-  /** CEO + Manager */
-  const isStaff        = isCEO || isManager;
-  /** CEO + Manager + Agent (internal ops) */
-  const isOpsTeam      = isCEO || isManager || isAgent;
-  /** Can access /admin routes */
-  const canAccessAdmin  = isCEO;
-  /** Can access /manager routes */
-  const canAccessManager = isCEO || isManager;
-  /** Can access /agent routes */
-  const canAccessAgent   = isAgent;
+    // ── Composite checks ──────────────────────────────────
+    const isStaff          = isCEO || isManager;
+    const isOpsTeam        = isCEO || isManager || isAgent;
+    const canAccessAdmin   = isCEO;
+    const canAccessManager = isCEO || isManager;
+    const canAccessAgent   = isAgent;
 
-  // ── Permission helpers ────────────────────────────────────
-  /** Can approve or reject listings / verifications */
-  const canApproveListings      = isCEO || isManager;
-  /** Can assign roles to users */
-  const canAssignRoles          = isCEO;
-  /** Can assign agents to orders */
-  const canAssignAgents         = isCEO || isManager;
-  /** Can view all orders across the platform */
-  const canViewAllOrders        = isCEO || isManager;
-  /** Can update order status */
-  const canUpdateOrderStatus    = isCEO || isManager || isAgent;
-  /** Can modify platform settings */
-  const canEditPlatformSettings = isCEO;
-  /** Can handle disputes */
-  const canHandleDisputes       = isCEO || isManager;
-  /** Can view platform analytics */
-  const canViewAnalytics        = isCEO || isManager;
+    // ── Permission helpers ─────────────────────────────────
+    const canApproveListings      = isCEO || isManager;
+    const canAssignRoles          = isCEO;
+    const canAssignAgents         = isCEO || isManager;
+    const canViewAllOrders        = isCEO || isManager;
+    const canUpdateOrderStatus    = isCEO || isManager || isAgent;
+    const canEditPlatformSettings = isCEO;
+    const canHandleDisputes       = isCEO || isManager;
+    const canViewAnalytics        = isCEO || isManager;
+    const agentTown               = isAgent ? (profile?.town ?? null) : null;
 
-  // ── Agent-specific ───────────────────────────────────────
-  /** Agent's assigned town */
-  const agentTown = isAgent ? (profile?.town ?? null) : null;
-
-  return {
-    // Raw
-    role,
-    profile,
-    user,
-    loading,
-    // Role flags
-    isCEO,
-    isManager,
-    isAgent,
-    isSeller,
-    isBuyer,
-    // Composite
-    isStaff,
-    isOpsTeam,
-    // Route access
-    canAccessAdmin,
-    canAccessManager,
-    canAccessAgent,
-    // Permissions
-    canApproveListings,
-    canAssignRoles,
-    canAssignAgents,
-    canViewAllOrders,
-    canUpdateOrderStatus,
-    canEditPlatformSettings,
-    canHandleDisputes,
-    canViewAnalytics,
-    // Agent
-    agentTown,
-  } as const;
+    return {
+      role, profile, user, loading,
+      isCEO, isManager, isAgent, isSeller, isBuyer,
+      isStaff, isOpsTeam,
+      canAccessAdmin, canAccessManager, canAccessAgent,
+      canApproveListings, canAssignRoles, canAssignAgents,
+      canViewAllOrders, canUpdateOrderStatus, canEditPlatformSettings,
+      canHandleDisputes, canViewAnalytics,
+      agentTown,
+    } as const;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, profile, user, loading]);
 }
 
 /** Server-side role check utility (use in Server Components / Route Handlers) */

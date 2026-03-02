@@ -45,7 +45,7 @@ function MarketplaceContent() {
     const supabase = createClient();
     let query = supabase
       .from('listings')
-      .select(`*, seller:profiles(full_name, shop_name, is_verified), images:listing_images(image_url, is_primary), category:categories(name, slug)`, { count: 'exact' })
+      .select(`*, seller:profiles(full_name, shop_name, is_verified), images:listing_images(image_url, is_primary), category:categories(name, slug)`, { count: 'estimated' })
       .eq('status', 'active')
       .eq('is_approved', true);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { CartItem } from '@/types';
 import toast from 'react-hot-toast';
@@ -51,7 +51,10 @@ export function useCart(userId?: string) {
     setItems([]);
   }
 
-  const total = items.reduce((sum, item) => sum + (item.listing?.price || 0) * item.quantity, 0);
+  const total = useMemo(
+    () => items.reduce((sum, item) => sum + (item.listing?.price || 0) * item.quantity, 0),
+    [items]
+  );
 
   return { items, loading, total, addToCart, removeFromCart, updateQuantity, clearCart, refetch: fetchCart };
 }

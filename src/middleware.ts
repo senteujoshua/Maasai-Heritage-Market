@@ -79,15 +79,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // ── 2. Role-based route enforcement ─────────────────────────────────────────
+  // ── 2. Role-based route enforcement (uses JWT app_metadata — no DB query) ───
   if (user && isProtected) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, town')
-      .eq('id', user.id)
-      .single();
+    // Role is synced to JWT app_metadata by the sync_role_to_jwt DB trigger.
+    // Falls back to DB query for users created before the trigger was deployed.
+    let role = user.app_metadata?.role as UserRole | undefined;
 
-    const role = profile?.role as UserRole | undefined;
+    if (!role) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      role = profile?.role as UserRole | undefined;
+    }
 
     // /admin/* — CEO / admin only
     if (CEO_ROUTES.some((r) => pathname.startsWith(r))) {
