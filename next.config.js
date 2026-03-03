@@ -2,6 +2,10 @@ const { withSentryConfig } = require('@sentry/nextjs');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  eslint: {
+    // eslint-config-next is incompatible with eslint@10; run lint separately via CI
+    ignoreDuringBuilds: true,
+  },
   images: {
     remotePatterns: [
       {
@@ -31,6 +35,10 @@ module.exports = withSentryConfig(nextConfig, {
   project: process.env.SENTRY_PROJECT,
   silent: true,
   telemetry: false,
-  disableLogger: true,
   hideSourceMaps: true,
+  webpack: {
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
 });
