@@ -355,10 +355,17 @@ function VerificationTab({ profile, onUpdate }: { profile: Profile; onUpdate: ()
     try {
       const supabase = createClient();
       const uploadDoc = async (file: File, type: string) => {
-        const path = `verifications/${profile.id}/${type}-${Date.now()}.${file.name.split('.').pop()}`;
+        const ext = file.name.split('.').pop();
+        // Path must start with profile.id to satisfy RLS: (storage.foldername(name))[1] = auth.uid()
+        const path = `${profile.id}/${type}-${Date.now()}.${ext}`;
         const { error } = await supabase.storage.from('verification-docs').upload(path, file, { upsert: true });
         if (error) throw error;
-        return supabase.storage.from('verification-docs').getPublicUrl(path).data.publicUrl;
+        // Private bucket — generate a long-lived signed URL so managers can view the doc
+        const { data: signed, error: signErr } = await supabase.storage
+          .from('verification-docs')
+          .createSignedUrl(path, 60 * 60 * 24 * 365 * 5); // 5 years
+        if (signErr) throw signErr;
+        return signed.signedUrl;
       };
       const [nationalIdUrl, kraPinUrl] = await Promise.all([
         uploadDoc(nationalId, 'national-id'),
