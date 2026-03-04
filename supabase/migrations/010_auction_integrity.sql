@@ -81,6 +81,9 @@ $$;
 -- Marks expired auctions as 'sold' (if there is a winning bid)
 -- or 'ended' (if no bids were placed).
 
+-- DROP first so we can change the return type if it existed as VOID
+DROP FUNCTION IF EXISTS end_expired_auctions();
+
 CREATE OR REPLACE FUNCTION end_expired_auctions() RETURNS INTEGER
 LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE

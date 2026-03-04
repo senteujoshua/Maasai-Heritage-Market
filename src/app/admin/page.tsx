@@ -216,7 +216,8 @@ export default function AdminDashboardPage() {
 
   async function rejectListing(id: string, reason: string) {
     const supabase = createClient();
-    await supabase.from('listings').update({ status: 'rejected', is_approved: false, rejection_reason: reason }).eq('id', id);
+    const { error } = await supabase.from('listings').update({ status: 'rejected', is_approved: false, rejection_reason: reason }).eq('id', id);
+    if (error) { toast.error('Failed to reject listing'); return; }
     setPendingListings((p) => p.filter((l) => l.id !== id));
     setStats((s) => ({ ...s, pendingListings: s.pendingListings - 1 }));
     setRejectTarget(null);
@@ -226,7 +227,8 @@ export default function AdminDashboardPage() {
   /* ── Verification actions ── */
   async function approveVerification(userId: string) {
     const supabase = createClient();
-    await supabase.from('profiles').update({ verification_status: 'approved', is_verified: true }).eq('id', userId);
+    const { error } = await supabase.from('profiles').update({ verification_status: 'approved', is_verified: true }).eq('id', userId);
+    if (error) { toast.error('Failed to approve verification'); return; }
     setPendingVerifications((p) => p.filter((v) => v.id !== userId));
     setStats((s) => ({ ...s, pendingVerifications: s.pendingVerifications - 1 }));
     toast.success('Seller verified!');
@@ -234,7 +236,8 @@ export default function AdminDashboardPage() {
 
   async function rejectVerification(userId: string, reason: string) {
     const supabase = createClient();
-    await supabase.from('profiles').update({ verification_status: 'rejected', rejection_reason: reason }).eq('id', userId);
+    const { error } = await supabase.from('profiles').update({ verification_status: 'rejected', rejection_reason: reason }).eq('id', userId);
+    if (error) { toast.error('Failed to reject verification'); return; }
     setPendingVerifications((p) => p.filter((v) => v.id !== userId));
     setStats((s) => ({ ...s, pendingVerifications: s.pendingVerifications - 1 }));
     setRejectTarget(null);
@@ -536,7 +539,9 @@ export default function AdminDashboardPage() {
       {activeTab === 'orders' && <OrdersTab />}
 
       {/* ── USERS ─────────────────────────────────────────────────────────── */}
-      {activeTab === 'users' && <UsersTab />}
+      <div className={activeTab !== 'users' ? 'hidden' : ''}>
+        <UsersTab />
+      </div>
 
       {/* ── REJECT MODAL ──────────────────────────────────────────────────── */}
       {rejectTarget && (
@@ -688,10 +693,9 @@ function UsersTab() {
     if (error || data?.error) {
       toast.error(data?.error || error?.message || 'Failed to update role');
     } else {
-      setUsers((prev) => prev.map((u) =>
-        u.id === userId ? { ...u, role: newRole } : u
-      ));
       toast.success(`Role updated to ${ROLE_LABELS[newRole as UserRole] ?? newRole}`);
+      // Re-fetch from DB to confirm the persisted state (prevents stale optimistic updates)
+      await loadUsers(true);
       // If admin changed their OWN role, refresh both useAuth state AND
       // the Supabase session token. refreshSession() fires onAuthStateChange
       // in every listener (Navbar, useAuth) so they all re-fetch the profile

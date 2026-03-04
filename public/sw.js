@@ -18,6 +18,9 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Ignore non-http(s) requests (e.g. chrome-extension://) — cache.put rejects them
+  if (!event.request.url.startsWith('http')) return;
+
   if (event.request.url.includes('/api/')) {
     event.respondWith(
       fetch(event.request).catch(() =>
@@ -48,8 +51,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'Maasai Heritage Market', {
       body: data.body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
+      icon: '/icons/icon.svg',
+      badge: '/icons/icon.svg',
       vibrate: [200, 100, 200],
       data: { url: data.url || '/' },
     })
