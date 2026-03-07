@@ -133,24 +133,26 @@ export default function ManagerDashboard() {
   // ── Actions ────────────────────────────────────────────────────────────────
 
   async function approveListing(id: string) {
-    const { error } = await supabase
-      .from('listings')
-      .update({ status: 'active', is_approved: true })
-      .eq('id', id);
-    if (error) { toast.error('Failed to approve'); return; }
-    toast.success('Listing approved');
+    const res = await fetch('/api/manager/listing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ listingId: id, action: 'approve' }),
+    });
+    if (!res.ok) { toast.error('Failed to approve'); return; }
+    toast.success('Listing approved — seller notified by email');
     setListings((prev) => prev.filter((l) => l.id !== id));
     setStats((s) => s ? { ...s, pendingListings: s.pendingListings - 1 } : s);
   }
 
   async function rejectListing(id: string) {
     if (!rejectReason.trim()) { toast.error('Please provide a reason'); return; }
-    const { error } = await supabase
-      .from('listings')
-      .update({ status: 'rejected', is_approved: false, rejection_reason: rejectReason })
-      .eq('id', id);
-    if (error) { toast.error('Failed to reject'); return; }
-    toast.success('Listing rejected');
+    const res = await fetch('/api/manager/listing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ listingId: id, action: 'reject', reason: rejectReason }),
+    });
+    if (!res.ok) { toast.error('Failed to reject'); return; }
+    toast.success('Listing rejected — seller notified by email');
     setListings((prev) => prev.filter((l) => l.id !== id));
     setStats((s) => s ? { ...s, pendingListings: s.pendingListings - 1 } : s);
     setRejectTarget(null);
@@ -158,24 +160,26 @@ export default function ManagerDashboard() {
   }
 
   async function approveVerification(userId: string) {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ verification_status: 'approved', is_verified: true })
-      .eq('id', userId);
-    if (error) { toast.error('Failed to approve'); return; }
-    toast.success('Verification approved');
+    const res = await fetch('/api/manager/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, action: 'approve' }),
+    });
+    if (!res.ok) { toast.error('Failed to approve'); return; }
+    toast.success('Verification approved — seller notified by email');
     setVerifications((prev) => prev.filter((v) => v.id !== userId));
     setStats((s) => s ? { ...s, pendingVerifications: s.pendingVerifications - 1 } : s);
   }
 
   async function rejectVerification(userId: string) {
     if (!rejectReason.trim()) { toast.error('Please provide a reason'); return; }
-    const { error } = await supabase
-      .from('profiles')
-      .update({ verification_status: 'rejected', is_verified: false, rejection_reason: rejectReason })
-      .eq('id', userId);
-    if (error) { toast.error('Failed to reject'); return; }
-    toast.success('Verification rejected');
+    const res = await fetch('/api/manager/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, action: 'reject', reason: rejectReason }),
+    });
+    if (!res.ok) { toast.error('Failed to reject'); return; }
+    toast.success('Verification rejected — seller notified by email');
     setVerifications((prev) => prev.filter((v) => v.id !== userId));
     setStats((s) => s ? { ...s, pendingVerifications: s.pendingVerifications - 1 } : s);
     setRejectTarget(null);

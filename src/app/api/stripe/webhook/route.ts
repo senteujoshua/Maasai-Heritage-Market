@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/nextjs';
 import Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase/server';
 import { auditLog } from '@/lib/audit';
+import { sendEmail, orderConfirmedHtml } from '@/lib/email';
 
 export async function POST(req: NextRequest) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -37,14 +38,32 @@ export async function POST(req: NextRequest) {
       const orderId = intent.metadata.orderId;
 
       if (orderId) {
-        await supabase.from('orders').update({
-          payment_status: 'paid',
-          status: 'confirmed',
-          paid_at: new Date().toISOString(),
-        }).eq('id', orderId);
+        const { data: order } = await supabase
+          .from('orders')
+          .update({ payment_status: 'paid', status: 'confirmed', paid_at: new Date().toISOString() })
+          .eq('id', orderId)
+          .select('id, total, items, buyer:profiles!buyer_id(full_name, email)')
+          .single();
 
         auditLog({ actorId: intent.metadata.userId ?? orderId, action: 'payment_completed',
           entityType: 'order', entityId: orderId, payload: { method: 'stripe', intent_id: intent.id } });
+
+        if (order) {
+          const buyer = order.buyer as unknown as Record<string, unknown>;
+          if (buyer?.email) {
+            sendEmail({
+              to: buyer.email as string,
+              subject: `Order confirmed — #${order.id.slice(0, 8).toUpperCase()}`,
+              html: orderConfirmedHtml({
+                buyerName: (buyer.full_name as string) ?? 'Valued Customer',
+                orderId:   order.id,
+                total:     order.total,
+                method:    'stripe',
+                items:     (order.items as Array<{ title: string; quantity: number; unit_price: number }>) ?? [],
+              }),
+            }).catch(console.error);
+          }
+        }
       }
     }
 

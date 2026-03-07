@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/nextjs';
 import { createAdminClient } from '@/lib/supabase/server';
 import { sendSMS, SMS_TEMPLATES } from '@/lib/africastalking/sms';
 import { auditLog } from '@/lib/audit';
+import { sendEmail, orderConfirmedHtml } from '@/lib/email';
 
 // Safaricom always expects { ResultCode: 0, ResultDesc: 'Accepted' } — do NOT change shape
 const ACCEPTED = NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
       // Idempotency: fetch order
       const { data: existingOrder } = await supabase
         .from('orders')
-        .select('id, payment_status, buyer:profiles(full_name, phone)')
+        .select('id, payment_status, buyer:profiles(full_name, phone, email)')
         .eq('mpesa_checkout_request_id', CheckoutRequestID)
         .single();
 
@@ -53,6 +54,19 @@ export async function POST(req: NextRequest) {
         if (buyer?.phone) {
           const message = SMS_TEMPLATES.orderConfirmed(order.id, order.total);
           sendSMS({ to: buyer.phone as string, message }).catch(console.error);
+        }
+        if (buyer?.email) {
+          sendEmail({
+            to: buyer.email as string,
+            subject: `Order confirmed — #${order.id.slice(0, 8).toUpperCase()}`,
+            html: orderConfirmedHtml({
+              buyerName: (buyer.full_name as string) ?? 'Valued Customer',
+              orderId:   order.id,
+              total:     order.total,
+              method:    'mpesa',
+              items:     (order.items as Array<{ title: string; quantity: number; unit_price: number }>) ?? [],
+            }),
+          }).catch(console.error);
         }
       }
     } else {
