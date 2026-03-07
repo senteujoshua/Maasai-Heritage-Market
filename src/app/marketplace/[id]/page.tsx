@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { formatKES, timeAgo, formatDate } from '@/lib/utils';
 import {
   ShoppingCart, Heart, Share2, ChevronLeft, ChevronRight, MapPin,
-  Package, Star, Eye, MessageSquare, Shield, Loader2, AlertTriangle
+  Package, Star, Eye, MessageSquare, Shield, Loader2, AlertTriangle, CheckCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -32,6 +32,12 @@ export default function ProductDetailPage() {
   const [wishlisted, setWishlisted] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [eligibleOrderId, setEligibleOrderId] = useState<string | null>(null);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   const { bids, bidding, placeBid } = useAuction(id);
   const currentBid = bids[0]?.amount ?? (listing?.current_bid ?? listing?.price ?? 0);
@@ -63,6 +69,28 @@ export default function ProductDetailPage() {
         .order('created_at', { ascending: false })
         .limit(5);
       setReviews(revData || []);
+
+      // Review eligibility: find a delivered order by this user containing this listing
+      if (profile?.id) {
+        const [orderRes, myReviewRes] = await Promise.all([
+          supabase
+            .from('orders')
+            .select('id')
+            .eq('buyer_id', profile.id)
+            .eq('status', 'delivered')
+            .contains('items', [{ listing_id: id }])
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from('reviews')
+            .select('id')
+            .eq('listing_id', id)
+            .eq('reviewer_id', profile.id)
+            .maybeSingle(),
+        ]);
+        setEligibleOrderId(orderRes.data?.id ?? null);
+        setAlreadyReviewed(!!myReviewRes.data);
+      }
     }
     setLoading(false);
   }, [id, profile?.id]);
@@ -88,6 +116,35 @@ export default function ProductDetailPage() {
     setAddingToCart(true);
     await addToCart(id, 1);
     setAddingToCart(false);
+  }
+
+  async function submitReview() {
+    if (!profile || !eligibleOrderId || reviewRating === 0) return;
+    setSubmittingReview(true);
+    const supabase = createClient();
+    const sellerId = (listing?.seller as unknown as Record<string, unknown>)?.id as string;
+    const { data, error } = await supabase
+      .from('reviews')
+      .insert({
+        listing_id: id,
+        reviewer_id: profile.id,
+        seller_id: sellerId,
+        order_id: eligibleOrderId,
+        rating: reviewRating,
+        comment: reviewComment.trim() || null,
+      })
+      .select('*, reviewer:profiles!reviewer_id(full_name, profile_picture_url)')
+      .single();
+    if (error) {
+      toast.error(error.message || 'Failed to submit review');
+    } else {
+      toast.success('Review submitted! Thank you.');
+      setReviews((prev) => [data as unknown as Review, ...prev]);
+      setAlreadyReviewed(true);
+      setReviewRating(0);
+      setReviewComment('');
+    }
+    setSubmittingReview(false);
   }
 
   function handleShare() {
@@ -347,6 +404,61 @@ export default function ProductDetailPage() {
                 );
               })}
             </div>
+          )}
+
+          {/* WRITE A REVIEW */}
+          {profile && !isOwner && eligibleOrderId && !alreadyReviewed && (
+            <div className="mt-6 p-5 bg-white dark:bg-maasai-brown rounded-2xl border border-maasai-beige/30 dark:border-maasai-brown-light">
+              <h3 className="font-bold text-maasai-black dark:text-white mb-1">Leave a Review</h3>
+              <p className="text-xs text-maasai-brown/50 dark:text-maasai-beige/50 mb-4">Share your experience with this item</p>
+              <div className="flex items-center gap-1 mb-4">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setReviewRating(star)}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                    className="transition-transform hover:scale-110"
+                  >
+                    <Star className={cn(
+                      'h-7 w-7 transition-colors',
+                      (hoverRating || reviewRating) >= star
+                        ? 'text-maasai-gold fill-current'
+                        : 'text-maasai-beige',
+                    )} />
+                  </button>
+                ))}
+                {reviewRating > 0 && (
+                  <span className="ml-2 text-sm text-maasai-brown/60 dark:text-maasai-beige/60">
+                    {['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][reviewRating]}
+                  </span>
+                )}
+              </div>
+              <textarea
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                placeholder="Tell others about your experience (optional)..."
+                rows={3}
+                className="w-full px-4 py-3 rounded-xl border border-maasai-beige dark:border-maasai-brown-light bg-maasai-beige/10 dark:bg-maasai-brown-light/20 text-sm text-maasai-black dark:text-white placeholder:text-maasai-brown/40 dark:placeholder:text-maasai-beige/40 focus:outline-none focus:ring-2 focus:ring-maasai-red resize-none mb-3"
+              />
+              <Button variant="primary" onClick={submitReview} loading={submittingReview} disabled={reviewRating === 0}>
+                Submit Review
+              </Button>
+            </div>
+          )}
+
+          {alreadyReviewed && (
+            <div className="mt-4 flex items-center gap-2 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-xl px-4 py-3">
+              <CheckCircle className="h-4 w-4 flex-shrink-0" />
+              You&apos;ve already reviewed this item.
+            </div>
+          )}
+
+          {profile && !isOwner && !eligibleOrderId && !alreadyReviewed && (
+            <p className="mt-4 text-xs text-center text-maasai-brown/40 dark:text-maasai-beige/40">
+              Purchase and receive this item to leave a review.
+            </p>
           )}
         </div>
 
