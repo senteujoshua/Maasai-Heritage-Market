@@ -50,7 +50,6 @@ export default function ScanPage() {
 
   const stopCamera = useCallback(() => {
     scanActive.current = false;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (readerRef.current as any)?.reset?.();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;

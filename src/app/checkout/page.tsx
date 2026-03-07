@@ -219,7 +219,7 @@ export default function CheckoutPage() {
         )}
         {paymentMethod === 'card' && (
           <p className="text-sm text-maasai-brown/70 dark:text-maasai-beige/70 mb-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3">
-            ✅ Card payment confirmed via Stripe. You'll receive a confirmation email.
+            ✅ Card payment confirmed via Stripe. You&apos;ll receive a confirmation email.
           </p>
         )}
         {paymentMethod === 'paypal' && (
@@ -229,7 +229,7 @@ export default function CheckoutPage() {
         )}
         {paymentMethod === 'cod' && (
           <p className="text-sm text-maasai-brown/70 dark:text-maasai-beige/70 mb-6 bg-maasai-beige/20 rounded-xl p-3">
-            📦 Cash on Delivery selected. You'll pay when your item arrives.
+            📦 Cash on Delivery selected. You&apos;ll pay when your item arrives.
           </p>
         )}
         <div className="flex flex-col sm:flex-row gap-3">
@@ -320,7 +320,7 @@ export default function CheckoutPage() {
                   </label>
                   <input {...register('mpesa_phone')} placeholder="+254 7XX XXX XXX" className={inputCls(!!errors.mpesa_phone)} />
                   {errors.mpesa_phone && <p className="text-red-500 text-xs mt-1">{errors.mpesa_phone.message}</p>}
-                  <p className="text-xs text-maasai-brown/50 dark:text-maasai-beige/50 mt-1.5">You'll receive a push notification to complete payment on your phone.</p>
+                  <p className="text-xs text-maasai-brown/50 dark:text-maasai-beige/50 mt-1.5">You&apos;ll receive a push notification to complete payment on your phone.</p>
                 </div>
               )}
 

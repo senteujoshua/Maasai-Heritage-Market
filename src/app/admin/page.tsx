@@ -703,7 +703,6 @@ function UsersTab() {
       if (currentUserProfile?.id === userId) {
         await refetchProfile();
         const supabase = createClient();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase.auth as any).refreshSession();
       }
     }
