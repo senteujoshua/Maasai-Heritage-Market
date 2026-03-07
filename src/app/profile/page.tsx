@@ -194,7 +194,7 @@ export default function ProfilePage() {
             {[
               { label: 'Total Sales', value: profile.total_sales },
               { label: 'Rating', value: profile.rating ? `${profile.rating} / 5` : '—' },
-              { label: 'Reviews', value: (profile as any).total_reviews || 0 },
+              { label: 'Rating', value: profile.rating ? profile.rating.toFixed(1) + ' / 5' : '—' },
             ].map(({ label, value }) => (
               <div key={label} className="text-center">
                 <p className="font-bold text-lg text-maasai-black dark:text-white">{value}</p>

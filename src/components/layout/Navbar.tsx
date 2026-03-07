@@ -9,6 +9,7 @@ import {
 import { useTheme } from 'next-themes';
 import { createClient } from '@/lib/supabase/client';
 import { useCart } from '@/hooks/useCart';
+import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
 import type { Profile, UserRole } from '@/types';
 import { ROLE_LABELS } from '@/types';
@@ -25,6 +26,7 @@ export function Navbar() {
   const supabase = createClient();
   const pathname = usePathname();
   const { items: cartItems } = useCart(user?.id);
+  const { unreadCount } = useNotifications(user?.id);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -135,6 +137,22 @@ export function Navbar() {
                 </span>
               )}
             </Link>
+
+            {/* Notification bell — authenticated only */}
+            {user && (
+              <Link
+                href="/notifications"
+                className="relative p-2 rounded-lg text-maasai-brown dark:text-maasai-beige hover:bg-maasai-beige/30 transition-colors"
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-maasai-red text-white text-[10px] rounded-full min-w-[18px] h-[18px] flex items-center justify-center font-bold px-0.5">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </Link>
+            )}
 
             {user ? (
               <div className="relative">
