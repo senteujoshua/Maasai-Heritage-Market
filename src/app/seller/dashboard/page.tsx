@@ -35,7 +35,7 @@ const TABS = [
 type TabId = typeof TABS[number]['id'];
 
 export default function SellerDashboardPage() {
-  const { profile, loading: authLoading } = useAuth();
+  const { profile, loading: authLoading, refetchProfile } = useAuth();
   const router = useRouter();
   const [listings, setListings] = useState<Listing[]>([]);
   const [recentOrders, setRecentOrders] = useState<Record<string, unknown>[]>([]);
@@ -65,7 +65,7 @@ export default function SellerDashboardPage() {
     setListings(allListings);
     setRecentOrders(ordersRes.data || []);
 
-    const totalRevenue = (ordersRes.data || []).filter((o) => o.payment_status === 'completed').reduce((sum, o) => sum + (o.total as number || 0), 0);
+    const totalRevenue = (ordersRes.data || []).filter((o) => o.payment_status === 'paid').reduce((sum, o) => sum + (o.total as number || 0), 0);
     setStats({
       totalListings: allListings.length,
       activeListings: allListings.filter((l) => l.status === 'active').length,
@@ -325,7 +325,7 @@ export default function SellerDashboardPage() {
 
       {/* VERIFICATION TAB */}
       {activeTab === 'verification' && (
-        <VerificationTab profile={profile!} onUpdate={fetchDashboardData} />
+        <VerificationTab profile={profile!} onUpdate={async () => { await refetchProfile(); await fetchDashboardData(); }} />
       )}
     </div>
   );
@@ -371,11 +371,12 @@ function VerificationTab({ profile, onUpdate }: { profile: Profile; onUpdate: ()
         uploadDoc(nationalId, 'national-id'),
         uploadDoc(kraPin, 'kra-pin'),
       ]);
-      await supabase.from('profiles').update({
+      const { error: updateError } = await supabase.from('profiles').update({
         national_id_url: nationalIdUrl,
         kra_pin_url: kraPinUrl,
         verification_status: 'pending',
       }).eq('id', profile.id);
+      if (updateError) throw updateError;
       toast.success('Documents submitted! Our team will review within 1–3 business days.');
       onUpdate();
     } catch (error: unknown) {
