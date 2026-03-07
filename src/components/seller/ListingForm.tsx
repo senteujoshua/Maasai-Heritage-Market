@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -78,6 +78,8 @@ export function ListingForm({ sellerId, listing, onSuccess }: Props) {
     setCategories(data || []);
     setCategoriesLoaded(true);
   }, [categoriesLoaded]);
+
+  useEffect(() => { loadCategories(); }, [loadCategories]);
 
   function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
@@ -298,7 +300,7 @@ export function ListingForm({ sellerId, listing, onSuccess }: Props) {
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-semibold text-maasai-brown dark:text-maasai-beige mb-1.5">Category *</label>
-            <select {...register('category_id')} onFocus={loadCategories} className={inputCls(!!errors.category_id)}>
+            <select {...register('category_id')} className={inputCls(!!errors.category_id)}>
               <option value="">Select a category...</option>
               {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
               {!categoriesLoaded && CATEGORIES.map((cat) => <option key={cat.slug} value={cat.slug}>{cat.name}</option>)}

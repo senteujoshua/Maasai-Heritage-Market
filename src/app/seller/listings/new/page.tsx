@@ -10,9 +10,11 @@ export default function NewListingPage() {
   const { profile, loading } = useAuth();
   const router = useRouter();
 
+  const SELLER_ROLES = ['seller', 'admin', 'ceo', 'manager'];
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && profile.role !== 'seller') router.push('/register?role=seller');
+    if (!loading && profile && !SELLER_ROLES.includes(profile.role)) router.push('/register?role=seller');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, loading, router]);
 
   if (loading) {
