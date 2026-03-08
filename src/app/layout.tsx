@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from 'next-themes';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
+import { PortalAwareLayout } from '@/components/layout/PortalAwareLayout';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -43,11 +42,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          <div className="flex min-h-screen flex-col">
-            <Navbar />
-            <main className="flex-1 pt-20 sm:pt-[4.5rem]">{children}</main>
-            <Footer />
-          </div>
+          <PortalAwareLayout>
+            {children}
+          </PortalAwareLayout>
           <Toaster
             position="top-right"
             toastOptions={{

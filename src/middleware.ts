@@ -5,53 +5,53 @@ import type { UserRole } from '@/types';
 
 // ── Route definitions ─────────────────────────────────────────────────────────
 
-/** Any route that requires authentication */
-const PROTECTED_ROUTES = [
-  '/seller',
-  '/admin',
-  '/manager',
-  '/agent',
-  '/checkout',
-  '/cart',
-  '/profile',
-  '/orders',
-];
+const BUYER_PROTECTED = ['/checkout', '/cart', '/profile', '/orders', '/wishlist', '/notifications', '/messages'];
+const VENDOR_ROUTES = ['/vendor/dashboard', '/vendor/listings', '/vendor/register'];
+const MANAGEMENT_ROUTES = ['/management/admin', '/management/manager', '/management/agent'];
 
-/** Routes accessible only to CEO / admin */
-const CEO_ROUTES = ['/admin'];
-
-/** Routes accessible to Manager + CEO */
-const MANAGER_ROUTES = ['/manager'];
-
-/** Routes accessible only to Agents */
-const AGENT_ROUTES = ['/agent'];
-
-/** Routes only for Sellers (+ staff) */
-const SELLER_ROUTES = ['/seller/dashboard', '/seller/listings'];
+// Legacy routes → redirect to new paths
+const LEGACY_REDIRECTS: Record<string, string> = {
+  '/seller/dashboard': '/vendor/dashboard',
+  '/seller/listings': '/vendor/listings',
+  '/seller/register': '/vendor/register',
+  '/admin': '/management/admin',
+  '/manager': '/management/manager',
+  '/agent': '/management/agent',
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function isCEO(role: UserRole | undefined | null): boolean {
-  return role === 'ceo' || role === 'admin'; // 'admin' kept for backwards-compat
+  return role === 'ceo' || role === 'admin';
 }
-
 function isManagerOrAbove(role: UserRole | undefined | null): boolean {
   return isCEO(role) || role === 'manager';
+}
+function isManagementRole(role: UserRole | undefined | null): boolean {
+  return isCEO(role) || role === 'manager' || role === 'agent';
 }
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+  const pathname = request.nextUrl.pathname;
+
+  // ── 0. Legacy redirects ──────────────────────────────────────────────────────
+  for (const [oldPath, newPath] of Object.entries(LEGACY_REDIRECTS)) {
+    if (pathname === oldPath || pathname.startsWith(oldPath + '/')) {
+      const newUrl = new URL(pathname.replace(oldPath, newPath), request.url);
+      newUrl.search = request.nextUrl.search;
+      return NextResponse.redirect(newUrl);
+    }
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
+        getAll() { return request.cookies.getAll(); },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({ request });
@@ -63,64 +63,57 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // IMPORTANT: Do not run code between createServerClient and supabase.auth.getUser()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const pathname = request.nextUrl.pathname;
-
-  // ── 1. Check if route needs auth ────────────────────────────────────────────
-  const isProtected = PROTECTED_ROUTES.some((r) => pathname.startsWith(r));
-
-  if (isProtected && !user) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+  // ── 1. Buyer protected routes ────────────────────────────────────────────────
+  if (BUYER_PROTECTED.some((r) => pathname.startsWith(r))) {
+    if (!user) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
-  // ── 2. Role-based route enforcement (uses JWT app_metadata — no DB query) ───
-  if (user && isProtected) {
-    // Role is synced to JWT app_metadata by the sync_role_to_jwt DB trigger.
-    // Falls back to DB query for users created before the trigger was deployed.
+  // ── 2. Vendor portal ─────────────────────────────────────────────────────────
+  const isVendorRoute = VENDOR_ROUTES.some((r) => pathname.startsWith(r));
+  if (isVendorRoute) {
+    if (!user) {
+      return NextResponse.redirect(new URL(`/vendor/login?redirect=${encodeURIComponent(pathname)}`, request.url));
+    }
     let role = user.app_metadata?.role as UserRole | undefined;
-
     if (!role) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
       role = profile?.role as UserRole | undefined;
     }
-
-    // /admin/* — CEO / admin only
-    if (CEO_ROUTES.some((r) => pathname.startsWith(r))) {
-      if (!isCEO(role)) {
-        return NextResponse.redirect(new URL('/?error=ceo_only', request.url));
-      }
+    const canAccessVendor = role === 'seller' || isManagerOrAbove(role) || isCEO(role);
+    if (!canAccessVendor) {
+      return NextResponse.redirect(new URL('/vendor/login?error=seller_only', request.url));
     }
+  }
 
-    // /manager/* — Manager + CEO
-    if (MANAGER_ROUTES.some((r) => pathname.startsWith(r))) {
-      if (!isManagerOrAbove(role)) {
-        return NextResponse.redirect(new URL('/?error=manager_only', request.url));
-      }
+  // ── 3. Management portal ─────────────────────────────────────────────────────
+  const isManagementRoute = pathname.startsWith('/management') && !pathname.startsWith('/management/login');
+  if (isManagementRoute) {
+    if (!user) {
+      return NextResponse.redirect(new URL(`/management/login?redirect=${encodeURIComponent(pathname)}`, request.url));
     }
-
-    // /agent/* — Agents only
-    if (AGENT_ROUTES.some((r) => pathname.startsWith(r))) {
-      if (role !== 'agent') {
-        return NextResponse.redirect(new URL('/?error=agent_only', request.url));
-      }
+    let role = user.app_metadata?.role as UserRole | undefined;
+    if (!role) {
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      role = profile?.role as UserRole | undefined;
     }
-
-    // /seller/* — Seller + staff
-    if (SELLER_ROUTES.some((r) => pathname.startsWith(r))) {
-      const canAccessSeller = role === 'seller' || isManagerOrAbove(role) || isCEO(role);
-      if (!canAccessSeller) {
-        return NextResponse.redirect(new URL('/?error=seller_only', request.url));
-      }
+    if (!isManagementRole(role)) {
+      return NextResponse.redirect(new URL('/management/login?error=access_denied', request.url));
+    }
+    // Sub-route enforcement
+    if (pathname.startsWith('/management/admin') && !isCEO(role)) {
+      return NextResponse.redirect(new URL('/management?error=ceo_only', request.url));
+    }
+    if (pathname.startsWith('/management/manager') && !isManagerOrAbove(role)) {
+      return NextResponse.redirect(new URL('/management?error=manager_only', request.url));
+    }
+    if (pathname.startsWith('/management/agent') && role !== 'agent') {
+      return NextResponse.redirect(new URL('/management?error=agent_only', request.url));
     }
   }
 

@@ -1,6 +1,10 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resend: Resend | null = null;
+function getResend(): Resend {
+  if (!resend) resend = new Resend(process.env.RESEND_API_KEY);
+  return resend;
+}
 
 const FROM  = process.env.EMAIL_FROM     ?? 'Maasai Heritage Market <noreply@maasaiheritagemarket.com>';
 const SITE  = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://maasaiheritagemarket.com';
@@ -194,7 +198,7 @@ export async function sendEmail({
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) return; // skip if not configured
   try {
-    await resend.emails.send({ from: FROM, to, subject, html });
+    await getResend().emails.send({ from: FROM, to, subject, html });
   } catch (err) {
     console.error('[email] send failed:', err);
   }

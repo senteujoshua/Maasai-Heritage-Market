@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   Search, ShoppingCart, Heart, Menu, X, Bell, User, ChevronDown,
-  Sun, Moon, Gavel, LayoutDashboard, ShieldAlert, LogOut, Package,
+  Sun, Moon, Gavel, LayoutDashboard, ShieldAlert, LogOut, Package, Store,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { createClient } from '@/lib/supabase/client';
@@ -67,6 +67,9 @@ export function Navbar() {
     { href: '/marketplace', label: 'Marketplace' },
     { href: '/auctions', label: 'Live Auctions', icon: Gavel, live: true },
   ];
+
+  const isVendor = user && ['seller', 'admin', 'ceo', 'manager'].includes(user.role);
+  const isManagement = user && ['admin', 'ceo', 'manager', 'agent'].includes(user.role);
 
   return (
     <nav className={cn(
@@ -189,39 +192,26 @@ export function Navbar() {
                           </Link>
                         ))}
 
-                        {(user.role === 'seller' || user.role === 'admin' || user.role === 'ceo') && (
+                        {isVendor && (
                           <>
                             <div className="my-1.5 h-px bg-maasai-beige/30 dark:bg-maasai-brown-light mx-4" />
-                            <Link href="/seller/dashboard" onClick={() => setUserMenuOpen(false)}
+                            <Link href="/vendor/dashboard" onClick={() => setUserMenuOpen(false)}
                               className="flex items-center gap-3 px-4 py-2.5 text-sm text-maasai-brown dark:text-maasai-beige hover:bg-maasai-beige/30 dark:hover:bg-maasai-brown-light/50 transition-colors">
-                              <LayoutDashboard className="h-4 w-4 text-maasai-brown/60 dark:text-maasai-beige/60" />
-                              Seller Dashboard
+                              <Store className="h-4 w-4 text-maasai-brown/60 dark:text-maasai-beige/60" />
+                              Vendor Dashboard
                             </Link>
                           </>
                         )}
 
-                        {(user.role === 'admin' || user.role === 'ceo') && (
-                          <Link href="/admin" onClick={() => setUserMenuOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-maasai-brown dark:text-maasai-beige hover:bg-maasai-beige/30 dark:hover:bg-maasai-brown-light/50 transition-colors">
-                            <ShieldAlert className="h-4 w-4 text-maasai-brown/60 dark:text-maasai-beige/60" />
-                            Admin Panel
-                          </Link>
-                        )}
-
-                        {user.role === 'manager' && (
-                          <Link href="/manager" onClick={() => setUserMenuOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-maasai-brown dark:text-maasai-beige hover:bg-maasai-beige/30 dark:hover:bg-maasai-brown-light/50 transition-colors">
-                            <ShieldAlert className="h-4 w-4 text-maasai-brown/60 dark:text-maasai-beige/60" />
-                            Manager Dashboard
-                          </Link>
-                        )}
-
-                        {user.role === 'agent' && (
-                          <Link href="/agent" onClick={() => setUserMenuOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-maasai-brown dark:text-maasai-beige hover:bg-maasai-beige/30 dark:hover:bg-maasai-brown-light/50 transition-colors">
-                            <LayoutDashboard className="h-4 w-4 text-maasai-brown/60 dark:text-maasai-beige/60" />
-                            Agent Portal
-                          </Link>
+                        {isManagement && (
+                          <>
+                            {!isVendor && <div className="my-1.5 h-px bg-maasai-beige/30 dark:bg-maasai-brown-light mx-4" />}
+                            <Link href="/management" onClick={() => setUserMenuOpen(false)}
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-maasai-brown dark:text-maasai-beige hover:bg-maasai-beige/30 dark:hover:bg-maasai-brown-light/50 transition-colors">
+                              <ShieldAlert className="h-4 w-4 text-maasai-brown/60 dark:text-maasai-beige/60" />
+                              Management
+                            </Link>
+                          </>
                         )}
 
                         <div className="my-1.5 h-px bg-maasai-beige/30 dark:bg-maasai-brown-light mx-4" />

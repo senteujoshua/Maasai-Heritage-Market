@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
-export default function SellerRegisterRedirect() {
+export default function SellerRootRedirect() {
   redirect('/vendor/register');
 }

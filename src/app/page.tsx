@@ -191,12 +191,12 @@ export default async function HomePage() {
           <div className="absolute inset-0 bg-shuka-pattern opacity-5" />
           <div className="relative grid lg:grid-cols-2 gap-8 items-center">
             <div>
-              <h2 className="font-display text-3xl sm:text-4xl font-bold mb-4">Are You a Kenyan Artisan?</h2>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold mb-4">Start Selling on Maasai Heritage</h2>
               <p className="text-white/80 text-lg mb-6 leading-relaxed">
                 Join 340+ verified artisans selling authentic cultural crafts. Earn up to 91% of every sale.
               </p>
-              <Link href="/register?role=seller" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white text-maasai-red font-bold rounded-xl hover:bg-maasai-cream transition-colors">
-                Start Selling Free <ArrowRight className="h-5 w-5" />
+              <Link href="/vendor/register" className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white text-maasai-red font-bold rounded-xl hover:bg-maasai-cream transition-colors">
+                Open Your Vendor Store <ArrowRight className="h-5 w-5" />
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-4">
