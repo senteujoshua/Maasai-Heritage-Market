@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(for f in \"/c/Users/Administrator/Olakira Lang/maasai-heritage-market/src/app/seller/page.tsx\" \"/c/Users/Administrator/Olakira Lang/maasai-heritage-market/src/app/seller/register/page.tsx\" \"/c/Users/Administrator/Olakira Lang/maasai-heritage-market/src/app/seller/dashboard/page.tsx\" \"/c/Users/Administrator/Olakira Lang/maasai-heritage-market/src/app/seller/listings/new/page.tsx\" \"/c/Users/Administrator/Olakira Lang/maasai-heritage-market/src/app/admin/page.tsx\" \"/c/Users/Administrator/Olakira Lang/maasai-heritage-market/src/app/manager/page.tsx\" \"/c/Users/Administrator/Olakira Lang/maasai-heritage-market/src/app/agent/page.tsx\")",
+      "Bash(do)",
+      "Bash(echo \"=== $f ===\")",
+      "Read(//c/Users/Administrator/Olakira Lang/maasai-heritage-market/**)",
+      "Bash(done)"
     ]
   }
 }
